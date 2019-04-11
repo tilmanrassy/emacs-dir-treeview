@@ -19,6 +19,22 @@ Overview
 * Ships with one theme called "pleasant" using Font Awesome icons
 
 
+Screenshots
+-----------
+
+#### Theme 'pleasant'
+![Theme 'pleasant'](screenshots/010_with_pleasant_theme.png "Theme 'pleasant'")
+
+#### Context dialog
+![Context dialog](screenshots/020_with_pleasant_theme_and_context_dialog.png "Context dialog")
+
+#### Without theme
+![Without theme](screenshots/030_without_theme.png "Without theme")
+
+#### Text modus
+![Text modus](screenshots/040_text_modus.png "Text modus")
+
+
 Installation
 ------------
 
