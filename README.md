@@ -59,7 +59,7 @@ to your `init.el` (somewhere after the `require` statement above):
 ### Installation of the "pleasant" theme
 
 Make sure the "Font Awesome" icon font is installed on your computer. Copy the file `dir-treeview-pleasant-theme.el`
-o somewhere in the theme loadpath (cf. Lisp variable `custom-theme-load-path`, see
+to somewhere in the theme loadpath (cf. Lisp variable `custom-theme-load-path`, see
 [Custom Themes](https://www.gnu.org/software/emacs/manual/html_node/emacs/Custom-Themes.html#Custom-Themes "Custom Themes - GNU Emacs Manual")
 in the Emacs Manual).
 Add the following to your `init.el` (somewhere after the `require` statement above):
