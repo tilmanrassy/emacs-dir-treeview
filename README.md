@@ -38,7 +38,7 @@ Screenshots
 Installation
 ------------
 
-As a prerequisite, install the "treeview" library.
+As a prerequisite, install [emacs-treeview](https://github.com/tilmanrassy/emacs-treeview).
 
 ### Installation of dir-treeview
 
@@ -90,6 +90,13 @@ tree in a side window (cf. [Side Windows](https://www.gnu.org/software/emacs/man
 
 ### Navigating in the tree, with and without mouse
 
-Navigating in the tree is straight forward. A left click on the `[+]` or `[-]` symbols expand or collapse the respective directory, respectively. A left click on the filename opens the respective file in Emacs.
+Navigating in the tree with the mouse is straight forward. A left click on the `[+]` or `[-]` symbols expand or collapse the respective directory. A left click on a filename opens the respective file in Emacs.
+
+It is possible to navigate in the tree completely without the mouse, only with the keyboard:
+
+* The up and down arrow keys jump to the previuos or next node, respectively. The point (i.e., the cursor) is placed on the `[+]` resp. `[-]` symbol if the node is a directory, and on the node's filename otherwise.
+* The `SPACE` key expands/collapses the respective directory if the point is on a `[+]`/`[-]` symbol.
+* The `RETURN` key expands/collapses the respective directory if the point is on a `[+]`/`[-]` symbol.
+* The `RETURN` key opens the respective file in Emacs if the point is on a filename.
 
 T.B.C.
