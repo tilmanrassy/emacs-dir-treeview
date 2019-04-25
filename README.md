@@ -101,23 +101,18 @@ It is possible to navigate in the tree completely without the mouse, only with t
 
 ### The context menu
 
-A right-click on an node opens the nodes's context menu. Alternativly, the context menu can be opened with the `m` key when the point is on a node. The items of the menu differ depending on whether the node is a directory or not:
+A right-click on an node opens the nodes's context menu. Alternativly, the context menu can be opened with the `m` key when the point is on a node. The menu looks different depending on whether the node is a directory or not:
 
-#### Non-directory file:
+#### Non-directory-file:
+![Context menu for non-directory files](screenshots/050_context_menu_non_directory.png "Context menu for non-directory files")
 
-Item | Action
------|-----------------------------------------
-Open | Opens the file in the current Emacs window
-Open in other window | Opens the file in a different window (as with [find-file-other-window](https://www.gnu.org/software/emacs/manual/html_node/emacs/Visiting.html))
-Open in new frame | Opens the file in a new frame (as with [find-file-other-frame](https://www.gnu.org/software/emacs/manual/html_node/emacs/Visiting.html))
-Open with... | Opens a submenu with external prograns or Lisp functions to open the file with
-View | Opens the file read-only in the current window
-View in other window | Opens the file read-only in a different window
-View in new frame | Opens the file read-only in a new frame
-Copy | Copies the file
-Rename | Renames the file
-Delete | Deletes the file
+#### Directory:
+![Context menu directories](screenshots/060_context_menu_directory.png "Context menu for directories")
 
+Most of the menu items should be self-explanatory.
 
+The `Open with...` item opens a submenu with external prograns or Lisp functions to open the file. 
+
+Both the contxt menu and the `Open with...` submenu are customizable.
 
 T.B.C.
