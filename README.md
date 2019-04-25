@@ -38,7 +38,7 @@ Screenshots
 Installation
 ------------
 
-As a prerequisite, install the "treeview" library.
+As a prerequisite, install [emacs-treeview](https://github.com/tilmanrassy/emacs-treeview).
 
 ### Installation of dir-treeview
 
@@ -59,7 +59,7 @@ to your `init.el` (somewhere after the `require` statement above):
 ### Installation of the "pleasant" theme
 
 Make sure the "Font Awesome" icon font is installed on your computer. Copy the file `dir-treeview-pleasant-theme.el`
-o somewhere in the theme loadpath (cf. Lisp variable `custom-theme-load-path`, see
+to somewhere in the theme loadpath (cf. Lisp variable `custom-theme-load-path`, see
 [Custom Themes](https://www.gnu.org/software/emacs/manual/html_node/emacs/Custom-Themes.html#Custom-Themes "Custom Themes - GNU Emacs Manual")
 in the Emacs Manual).
 Add the following to your `init.el` (somewhere after the `require` statement above):
@@ -90,6 +90,34 @@ tree in a side window (cf. [Side Windows](https://www.gnu.org/software/emacs/man
 
 ### Navigating in the tree, with and without mouse
 
-Navigating in the tree is straight forward. A left click on the `[+]` or `[-]` symbols expand or collapse the respective directory, respectively. A left click on the filename opens the respective file in Emacs.
+Navigating in the tree with the mouse is straight forward. A left click on the `[+]` or `[-]` symbols expand or collapse the respective directory. A left click on a filename opens the respective file in Emacs.
+
+It is possible to navigate in the tree completely without the mouse, only with the keyboard:
+
+* The up and down arrow keys jump to the previuos or next node, respectively. The point (cursor) is placed on the `[+]` resp. `[-]` symbol if the node is a directory, and on the filename otherwise.
+* The `SPACE` key expands/collapses the respective directory if the point is on a `[+]`/`[-]` symbol.
+* The `RETURN` key expands/collapses the respective directory if the point is on a `[+]`/`[-]` symbol.
+* The `RETURN` key opens the respective file in Emacs if the point is on a filename.
+
+### The context menu
+
+A right-click on an node opens the nodes's context menu. Alternativly, the context menu can be opened with the `m` key when the point is on a node. The items of the menu differ depending on whether the node is a directory or not:
+
+#### Non-directory file:
+
+Item | Action
+-----|-----------------------------------------
+Open | Opens the file in the current Emacs window
+Open in other window | Opens the file in a different window (as with [find-file-other-window](https://www.gnu.org/software/emacs/manual/html_node/emacs/Visiting.html))
+Open in new frame | Opens the file in a new frame (as with [find-file-other-frame](https://www.gnu.org/software/emacs/manual/html_node/emacs/Visiting.html))
+Open with... | Opens a submenu with external prograns or Lisp functions to open the file with
+View | Opens the file read-only in the current window
+View in other window | Opens the file read-only in a different window
+View in new frame | Opens the file read-only in a new frame
+Copy | Copies the file
+Rename | Renames the file
+Delete | Deletes the file
+
+
 
 T.B.C.
