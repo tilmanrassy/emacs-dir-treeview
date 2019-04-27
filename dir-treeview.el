@@ -338,7 +338,7 @@ On Unix-like systems including Linux and Mac OS X, path components are separated
 by a slash.  Thus, the regular expression should be \"/\".  On Windows, path
 components can be separated by either a slash or a backslash.  Thus, the regular
 expression should be \"[\\/]\"."
-  :group 'scratch
+  :group 'dir-treeview
   :type 'regexp)
 
 (defface dir-treeview-default-icon-face
@@ -449,7 +449,7 @@ latter is called by this function.  The only difference to `read-file-name' is
 the way how it is controlled whether a graphical file dialog is used or not.
 With this function, if `dir-treeview-use-file-dialog' is non-nil and the
 function was invoked by a mouse command, a graphical file dialog is used.
-Otherwise, the directory is read in the minibuffer."
+Otherwise, the filename is read in the minibuffer."
   (interactive)
   (let ( (use-file-dialog dir-treeview-use-file-dialog) )
     (read-file-name prompt dir default-filename mustmatch initial predicate)))
