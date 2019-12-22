@@ -1,19 +1,21 @@
 emacs-dir-treeview
 ==================
 
-Emacs tree navigator for the file system and simple file manager.
+Emacs file system navigator and simple file manager.
 
 * [Overview](#overview)
 * [Screenshots](#screenshots)
 * [Installation](#installation)
 * [Usage](#usage)
+* [Customization](#customization)
+
 
 Overview
 --------
 
-* Displays the file system as a tree, with branches that can be folded and unfolded
+* Displays the file system as a tree; subtrees can be folded and unfolded
 * A click on a filename loads the file in Emacs
-* A right-click opnes a context menu with further actions
+* A right-click opens a context menu with further actions
 * Can open files by external programs or Lisp functions
 * Can open terminal in directory
 * Can copy, delete, and move files
@@ -78,8 +80,8 @@ Usage
 
 ### Start
 
-The easiest way to start dir-treeview is by the key you bound to the command `dir-treeview`
-during installation (see section "Installation" above). It shows the tree originating at your home
+The normal way to start dir-treeview is by the command `dir-treeview`. This is why we bound
+a key - F9 - to it in the installation (see section "Installation" above). It shows the tree originating at your home
 directory. If you want to start dir-treeview with a different origin, use the command `dir-treeview-open`,
 which will ask for the origin directory in the minibuffer:
 
@@ -115,8 +117,27 @@ A right-click on an node opens the nodes's context menu. Alternativly, the conte
 
 Most of the menu items should be self-explanatory.
 
-The `Open with...` item opens a submenu with external prograns or Lisp functions to open the file. 
+The `Open with...` item opens a submenu with external prograns or Lisp functions to open the file.
 
-Both the contxt menu and the `Open with...` submenu are customizable.
+The `Open Terminal` item opens a shell in terminal program at the corresponding directory.
 
-T.B.C.
+Both the context menu and the `Open with...` submenu are customizable.
+
+
+
+Customization
+-------------
+
+Dir-treeview uses [Emacs' Easy Customization](https://www.gnu.org/software/emacs/manual/html_node/emacs/Easy-Customization.html#Easy-Customization "Easy Customization Interface - GNU Emacs Manual") system. The customization group is "dir-treeview". Type
+
+```
+    M-x customize-group RET dir-treeview RET
+```
+in the minibuffer. The customization buffer for dir-treeview opens and a list off settings
+is displayed. You can change each setting interactively in the buffer. For example, to change the key bindings of the `[+]`/`[-]` symbols,
+open the "Dir Treeview Control Keymap" entry by clicking on the small triangle left to it. You will see the following:
+
+![Customization buffer](screenshots/070_customization.png "Customization buffer")
+
+You can now add or remove keys or change the Lisp commands bound the them.
+

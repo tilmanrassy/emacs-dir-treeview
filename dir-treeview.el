@@ -199,7 +199,7 @@ corresponding file is shown, otherwise not."
   'dir-treeview-default-compare-filenames
   "Function used to sort filenames.
 Called with two filenames.  If it returns non-nil, the first filename is listed
-before the second."
+after the second."
   :group 'dir-treeview
   :type 'function)
 
@@ -341,6 +341,74 @@ expression should be \"[\\/]\"."
   :group 'dir-treeview
   :type 'regexp)
 
+(defcustom dir-treeview-open-commands
+  
+  '((dir-treeview-is-image-p "gimp" ("gimp"))
+    ("\\.x?html$" "Default browser" (browse-url))
+    ("\\.x?html$" "Firefox" (browse-url-firefox))
+    ("\\.\\(?:pdf\\|dvi\\|ps\\)$" "okular" ("okular"))
+    ("\\.\\(?:pdf\\|dvi\\|ps\\)$" "evince" ("evince"))
+    ("\\.pdf$" "acroread" ("acroread"))
+    ("\\.\\(?:od[tsgmpfb]\\|ot[thsgp]\\|oxt\\|doc[xm]?\\|xls[xm]?\\|ppt[xm]?\\)$" "libreoffice" ("libreoffice"))
+    ("\\.\\(?:ogg\\|mp[34]\\|mpe?g\\|avi\\|mov\\|qt\\)$" "vlc" ("vlc")))
+  
+  "List of programs and functions to open files.
+
+This list controls the entries of the 'Open with ...' submenu of the popup menu
+of a node.  Each entry consists of a 'tester' and an 'action'.  The tester
+controls whether the submenu entry is shown, and the action controls what
+happens when the entry is clicked.
+
+The tester must be either a regular expression or a Lisp function.  If a regular
+expression, the entry is excluded from the submenu when the absolute filename of
+the node doesn't match the regular expression.  If the tester is a Lisp
+function, the function is called with the absolute filename of the node as
+argument, and the entry is excluded from the submenu if the function returns nil.
+
+The action may be either an external program or a Lisp function.  An external
+program consists of an executable name and, optionally, a list of parameters.
+If the action is an external program, the corresponding executable is called
+with the specified parameters (if any) and the absolute filename of the node
+added as the last parameter.  If the action is a Lisp function, the function is
+called with one argument, the absolute filename of the node.
+
+If the action is an external program, but the executable doesn't exist, the
+entry is excluded from the submenu."
+  
+  :group 'dir-treeview
+  :type '(repeat (list (choice :format                 "Tester Type      : %[Select Type%]\n            %v"
+                               (regexp :tag            "Test Regexp      ")
+                               (function :tag          "Test Function    "))
+                       (string :tag                    "Name             ")
+                       (choice :format                 "Command Type     : %[Select Type%]\n            %v"
+                               (list :tag              "External Program"
+                                     :format           "-- External Program --\n%v"
+                                     (string :tag      "Program Name     ")
+                                     (repeat :tag      "Parameters       "
+                                             (string :tag "     ")))
+                               (list :tag              "Function"
+                                     :format           "-- Function --\n%v"
+                                     (function :tag    "Function Name    ")
+                                     (repeat :tag      "Parameters       "
+                                             (sexp :tag"     ")))))))
+
+(defcustom dir-treeview-get-node-menu-function
+  'dir-treeview-get-default-node-menu
+  "Function which creates the popup menu of a node.
+Called with one argument, the node for which to popup the menu.  Should return
+a menu-specifying object as described in the GNU Emacs Lisp Reference Manual."
+  :group 'dir-treeview
+  :type 'function)
+
+(defcustom dir-treeview-use-file-watch t
+  "Whether file watch is switched on automatically.
+
+If file watch is activated, Emacs will be notified about file system changes,
+and update all dir-treeview buffers accordingly.
+
+See chapter \"File Notifications\" of the GNU Emacs Lisp Reference Manual for
+more information.")
+
 (defface dir-treeview-default-icon-face
   ()
   "Default face to highlight icons."
@@ -441,6 +509,17 @@ expression should be \"[\\/]\"."
   "Face to highlight video files."
   :group 'dir-treeview)
 
+(defvar dir-treeview-start-node nil
+  "The root node of the visible part of the tree.")
+
+(make-variable-buffer-local 'dir-treeview-start-node)
+
+(define-error 'dir-treeview-invalid-major-mode-error
+  "Invalid major mode (expected dir-treeview-mode)" 'treeview-error)
+
+(define-error 'dir-treeview-no-parent-dir-error
+  "No parent directory" 'treeview-error)
+
 (defun dir-treeview-read-file-name (prompt &optional dir default-filename mustmatch initial predicate)
   "Read a filename, either in the minibuffer or a graphical dialog.
 The arguments PROMPT, DIR, DEFAULT-FILENAME, MUSTMATCH, INITIAL, and PREDICATE
@@ -467,6 +546,13 @@ Otherwise, the directory is read in the minibuffer."
   (let ( (use-file-dialog dir-treeview-use-file-dialog) )
     (file-name-as-directory
      (read-directory-name prompt dir default-dirname mustmatch initial))))
+
+(defun dir-treeview-char-code-to-symbol (code)
+  "Return the symbol for the hexadecimal character code CODE.
+CODE should be a string describing an hexadecimal number.  The return value is
+a string containing a single character, namely the character corresponing to the
+numerical code specified by CODE."
+  (string (string-to-number code 16)))
 
 (defun dir-treeview-is-image-p (filename)
   "Return non-nil if file FILENAME is an image, otherwise nil.
@@ -513,24 +599,6 @@ the default implementation of `dir-treeview-is-text-p-function'."
 Calls `dir-treeview-is-text-p-function' with FILENAME as argument."
   (funcall dir-treeview-is-text-p-function filename))
 
-(defun dir-treeview-char-code-to-symbol (code)
-  "Return the symbol for the hexadecimal character code CODE.
-CODE should be a string describing an hexadecimal number.  The return value is
-a string containing a single character, namely the character corresponing to the
-numerical code specified by CODE."
-  (string (string-to-number code 16)))
-
-(defvar dir-treeview-start-node nil
-  "The root node of the visible part of the tree.")
-
-(make-variable-buffer-local 'dir-treeview-start-node)
-
-(define-error 'dir-treeview-invalid-major-mode-error
-  "Invalid major mode (expected dir-treeview-mode)" 'treeview-error)
-
-(define-error 'dir-treeview-no-parent-dir-error
-  "No parent directory" 'treeview-error)
-
 (defun dir-treeview-local-filename (filename)
   "Return the local part of FILENAME.
 This is the part of FILENAME without the path of the directory FILENAME is in.
@@ -573,7 +641,7 @@ filename                  | dirname    | return value
 This is the filename of the directory containing FILENAME.  If FILENAME doesn't
 specify a parent, return nil.  This happens only if FILENAME is a local filename
 with no additional parts."
-  (file-name-directory (directory-file-name filename)))
+  (directory-file-name (file-name-directory (directory-file-name filename))))
 
 (defun dir-treeview-new-node (absolute-name &optional parent children)
   "Create and return a new node.
@@ -592,39 +660,17 @@ CHILDREN:      The children of the new node.  Should be a list of nodes.
     (treeview-set-node-children node children)
     node))
 
-(defun dir-treeview-get-node-child-with-absolute-name (node absolute-name)
-  "Return the child of NODE with absolute filename ABSOLUTE-NAME."
-  (let ( (children (treeview-get-node-children node))
-         (child nil) )
-    (while (and (not child) children)
-      (setq child (if (equal (treeview-get-node-prop (car children) 'absolute-name) absolute-name)
-                      (car children))
-            children (cdr children)))
-    child))
+(defun dir-treeview-directory-p (node)
+  "Return non-nil if NODE represends a directory."
+  (file-directory-p (treeview-get-node-prop node 'absolute-name)))
 
-(defun dir-treeview-find-node-with-relative-name (relative-name &optional base-node)
-  "Return the node with name RELATIVE-NAME relative to BASE-NODE.
-If no such node exists, return nil.  BASE-NODE defaults to `dir-treeview-start-node'."
-  (let ( (node (or base-node dir-treeview-start-node))
-         (name-parts (split-string relative-name dir-treeview-split-path-regexp)) )
-    (while (and node name-parts)
-      (let ( (name (car name-parts))
-             (children (treeview-get-node-children node))
-             (child nil) )
-        (while (and (not child) children)
-          (setq child (if (equal (treeview-get-node-name (car children)) name) (car children))
-                children (cdr children)))
-        (setq node child
-              name-parts (cdr name-parts)) ))
-    (unless name-parts node)))
-
-(defun dir-treeview-find-node-with-absolute-name (absolute-name &optional base-node)
-  "Search and return the node with the absolute name ABSOLUTE-NAME.
-Start the search at BASE-NODE.  Return nil if no node was found.
-BASE-NODE defaults to `dir-treeview-start-node'."
-  (unless base-node (setq base-node dir-treeview-start-node))
-  (let ( (relative-name (dir-treeview-relative-filename absolute-name (treeview-get-node-prop base-node 'absolute-name))) )
-    (if relative-name (dir-treeview-find-node-with-relative-name relative-name base-node))))
+(defun dir-treeview-node-leaf-p (node)
+  "Return non-nil if NODE is a leaf node.
+This function is the implementation of `treeview-node-leaf-p-function' in
+dir-treeview.  It returns non-nil if, and only if, NODE represends a file which
+is not a directory.  Note that this function considers empty directories
+not as leaf nodes."
+  (not (file-directory-p (treeview-get-node-prop node 'absolute-name))))
 
 (defun dir-treeview-get-indent (node)
   "Return the indentation of NODE."
@@ -637,18 +683,6 @@ BASE-NODE defaults to `dir-treeview-start-node'."
                          indent)
             node parent))
     indent))
-
-(defun dir-treeview-directory-p (node)
-  "Return non-nil if NODE represends a directory."
-  (file-directory-p (treeview-get-node-prop node 'absolute-name)))
-
-(defun dir-treeview-node-leaf-p (node)
-  "Return non-nil if NODE is a leaf node.
-This function is the implementation of `treeview-node-leaf-p-function' in
-dir-treeview.  It returns non-nil if, and only if, NODE represends a file which
-is not a directory.  Note that this function considers empty directories
-not as leaf nodes."
-  (not (file-directory-p (treeview-get-node-prop node 'absolute-name))))
 
 (defun dir-treeview-get-control (node)
   "Return the control symbol for NODE.
@@ -715,6 +749,32 @@ This function is the dir-treeview implementation of
 `treeview-get-label-function'.  It simply retuns the name of NODE."
   (treeview-get-node-name node))
 
+(defun dir-treeview-get-icon-face (node)
+  "Return the face for the icon of NODE.
+
+If `dir-treeview-icon-faces' specifies an icon face for NODE, that face is
+returned.  Otherwise, `dir-treeview-default-icon-face' is returned.
+
+See also the documentation of `dir-treeview-icon-faces' for more information"
+  (or (dir-treeview--query-tester-value-list node dir-treeview-icon-faces) 'dir-treeview-default-icon-face))
+
+(defun dir-treeview-get-control-keymap (node)
+  "Return the keymap for the control symbol of NODE.
+If NODE belongs to a directory, returns the keymap defined by
+`dir-treeview-control-keymap'.  Otherwise, returns nil."
+  (if (dir-treeview-directory-p node) (treeview-make-keymap dir-treeview-control-keymap)))
+
+(defun dir-treeview-get-label-keymap (_node)
+  "Return the keymap for the label of _ NODE.
+This is the keymap defined by `dir-treeview-label-keymap'."
+  (treeview-make-keymap dir-treeview-label-keymap))
+
+(defun dir-treeview-get-label-face (node)
+  "Return the face for the label of NODE.
+The face is determined by `dir-treeview-filename-faces'.  See the documentation
+of `dir-treeview-filename-faces' for more information."
+    (or (dir-treeview--query-tester-value-list node dir-treeview-filename-faces) 'dir-treeview-default-filename-face))
+
 (defun dir-treeview-default-accept-filename (filename)
   "Return non-nil if FILENAME should be shown in the tree, otherwise nil.
 Default implementation of `dir-treeview-accept-filename-function'.
@@ -770,6 +830,14 @@ Applies the function stored in `dir-treeview-compare-filenames-function' to the
 two filenames."
   (if (funcall dir-treeview-compare-filenames-function filename-1 filename-2) t nil))
 
+(defun dir-treeview-compare-nodes (node-1 node-2)
+  "Return non-nil if NODE-1 is less than NODE-2 in actual sort order.
+The function simply applies `dir-treeview-compare-filenames' to the absolute
+filenames of the nodes."
+  (dir-treeview-compare-filenames
+   (treeview-get-node-prop node-1 'absolute-name)
+   (treeview-get-node-prop node-2 'absolute-name)))
+
 (defun dir-treeview-get-dir-contents (dir)
   "Return the contents of DIR, filtered and sorted.
 Filtering is done by `dir-treeview-filter-dir-contents'.
@@ -777,42 +845,39 @@ Sorting is done according to `dir-treeview-compare-filenames'."
   (sort (dir-treeview-filter-dir-contents (directory-files dir t nil t))
         'dir-treeview-compare-filenames))
 
-(defun dir-treeview-get-icon-face (node)
-  "Return the face for the icon of NODE.
+(defun dir-treeview-get-child-with-absolute-name (parent absolute-name)
+  "Return the child of PARENT (a node) with absolute filename ABSOLUTE-NAME."
+  (let ( (children (treeview-get-node-children parent))
+         (child nil) )
+    (while (and (not child) children)
+      (setq child (if (equal (treeview-get-node-prop (car children) 'absolute-name) absolute-name)
+                      (car children))
+            children (cdr children)))
+    child))
 
-If `dir-treeview-icon-faces' specifies an icon face for NODE, that face is
-returned.  Otherwise, `dir-treeview-default-icon-face' is returned.
+(defun dir-treeview-find-node-with-relative-name (relative-name &optional base-node)
+  "Return the node with name RELATIVE-NAME relative to BASE-NODE.
+If no such node exists, return nil.  BASE-NODE defaults to `dir-treeview-start-node'."
+  (let ( (node (or base-node dir-treeview-start-node))
+         (name-parts (split-string relative-name dir-treeview-split-path-regexp)) )
+    (while (and node name-parts)
+      (let ( (name (car name-parts))
+             (children (treeview-get-node-children node))
+             (child nil) )
+        (while (and (not child) children)
+          (setq child (if (equal (treeview-get-node-name (car children)) name) (car children))
+                children (cdr children)))
+        (setq node child
+              name-parts (cdr name-parts)) ))
+    (unless name-parts node)))
 
-See also the documentation of `dir-treeview-icon-faces' for more information"
-  (or (dir-treeview--query-tester-value-list node dir-treeview-icon-faces) 'dir-treeview-default-icon-face))
-
-(defun dir-treeview-get-control-keymap (node)
-  "Return the keymap for the control symbol of NODE.
-If NODE belongs to a directory, returns the keymap defined by
-`dir-treeview-control-keymap'.  Otherwise, returns nil."
-  (if (dir-treeview-directory-p node) (treeview-make-keymap dir-treeview-control-keymap)))
-
-(defun dir-treeview-get-label-keymap (_node)
-  "Return the keymap for the label of _ NODE.
-This is the keymap defined by `dir-treeview-label-keymap'."
-  (treeview-make-keymap dir-treeview-label-keymap))
-
-(defun dir-treeview-get-label-face (node)
-  "Return the face for the label of NODE.
-The face is determined by `dir-treeview-filename-faces'.  See the documentation
-of `dir-treeview-filename-faces' for more information."
-    (or (dir-treeview--query-tester-value-list node dir-treeview-filename-faces) 'dir-treeview-default-filename-face))
-
-(defun dir-treeview-create-parent-link ()
-  "Create the link to the parent directory."
-  (beginning-of-line)
-  (let* ( (start (point))
-          (overlay (progn
-                     (treeview-put dir-treeview-parent-dir-control)
-                     (make-overlay start (point)))) )
-    (overlay-put overlay 'keymap (treeview-make-keymap dir-treeview-parent-dir-control-keymap))
-    (overlay-put overlay 'face 'dir-treeview-control-face)
-    (overlay-put overlay 'mouse-face 'dir-treeview-control-mouse-face) ))
+(defun dir-treeview-find-node-with-absolute-name (absolute-name &optional base-node)
+  "Search and return the node with the absolute name ABSOLUTE-NAME.
+Start the search at BASE-NODE.  Return nil if no node was found.
+BASE-NODE defaults to `dir-treeview-start-node'."
+  (unless base-node (setq base-node dir-treeview-start-node))
+  (let ( (relative-name (dir-treeview-relative-filename absolute-name (treeview-get-node-prop base-node 'absolute-name))) )
+    (if relative-name (dir-treeview-find-node-with-relative-name relative-name base-node))))
 
 (defun dir-treeview-update-node-children (node)
   "Update the children of NODE.
@@ -837,17 +902,44 @@ In both cases, NODE is returned."
              (children ()) )
         (while contents
           (let* ( (absolute-name (car contents))
-                  (child (or (dir-treeview-get-node-child-with-absolute-name node absolute-name)
+                  (child (or (dir-treeview-get-child-with-absolute-name node absolute-name)
                              (dir-treeview-new-node absolute-name node))) )
             (setq children (cons child children)
                   contents (cdr contents))))
         (treeview-set-node-children node children) ))
   node)
 
-(defun dir-treeview-buffer-name (dir)
-  "Return the name of a dir-treeview buffer with DIR as root directory.
-Returns \"*dir-treeview DIR *\" (where DIR is substituted by the value of DIR)."
-  (concat "*dir-treeview " dir "*"))
+(defun dir-treeview-add-node-for-absolute-name (absolute-name)
+  "Add a node for ABSOLUTE-NAME to the tree.
+If ABSOLUTE-NAME is a descendant of the root directory of the tree and the tree
+does not already contain a node for ABSOLUTE-NAME, such a node is created, added
+to the tree, and displayed. Otherwise, the function does nothing."
+  (let ( (abs-parent-name (dir-treeview-parent-filename absolute-name)) parent node )
+    (when abs-parent-name
+      (setq parent (dir-treeview-find-node-with-absolute-name abs-parent-name))
+      (when (and parent (not (dir-treeview-get-child-with-absolute-name parent absolute-name)))
+        (setq node (dir-treeview-new-node absolute-name parent))
+        (treeview-add-child parent node 'dir-treeview-compare-nodes)))))
+
+(defun dir-treeview-remove-node-with-absolute-name (absolute-name)
+  (let ( (node (dir-treeview-find-node-with-absolute-name absolute-name)) )
+    (when node (treeview-remove-node node))))
+
+(defun dir-treeview-move-node-by-absolute-name (old-absolute-name new-absolute-name)
+  (let* ( (node (dir-treeview-find-node-with-absolute-name old-absolute-name))
+          (new-parent (dir-treeview-find-node-with-absolute-name (dir-treeview-parent-filename new-absolute-name))) )
+    (cond ((and node new-parent)
+           (unless (eq (treeview-get-node-parent) new-parent)
+             (treeview-remove-node node)
+             (treeview-add-child new-parent node 'dir-treeview-compare-nodes))
+           (treeview-set-node-name node (dir-treeview-local-filename new-absolute-name))
+           (treeview-set-node-prop node 'absolute-name new-absolute-name)
+           (treeview-redisplay-node node))
+          ((node)
+           (treeview-remove-node node))
+          ((new-parent)
+           (treeview-add-child
+            new-parent (dir-treeview-new-node new-absolute-name new-parent) 'dir-treeview-compare-nodes)))))
 
 (defun dir-treeview-redisplay ()
   "Redisplay current buffer, which should be a dir-treeview buffer."
@@ -865,16 +957,12 @@ Returns \"*dir-treeview DIR *\" (where DIR is substituted by the value of DIR)."
 
 (defun dir-treeview-get-buffers ()
   "Return a list of all dir-treeview buffers."
-  (save-excursion
-    (let ( (all-buffers (buffer-list))
-           (dir-treeview-buffers ()) )
-      (while all-buffers
-        (let ( (buffer (car all-buffers)) )
-          (set-buffer buffer)
-          (if (eq major-mode 'dir-treeview-mode)
-            (setq dir-treeview-buffers (append dir-treeview-buffers (list buffer))))
-          (setq all-buffers (cdr all-buffers))))
-      dir-treeview-buffers)))
+  (let ( (dir-treeview-buffers ()) )
+    (dolist (buffer (buffer-list))
+      (with-current-buffer buffer
+        (if (eq major-mode 'dir-treeview-mode)
+            (setq dir-treeview-buffers (cons buffer dir-treeview-buffers)))))
+    dir-treeview-buffers))
 
 (defun dir-treeview-get-buffer (&optional dir)
   "Find and return the dir-treeview buffer with DIR as root directory.
@@ -896,6 +984,139 @@ list is empty (i.e., nil), return nil."
                 (setq dir-treeview-buffers (cdr dir-treeview-buffers))))))
       (if dir-treeview-buffers (setq buffer (car dir-treeview-buffers))) )
     buffer))
+
+(defun dir-treeview-apply-recursively (node callback)
+  (funcall callback node)
+  (dolist (child (treeview-get-node-children node))
+    (dir-treeview-apply-recursively child callback)))
+
+(defun dir-treeview-for-each-node-in-each-buffer (callback)
+    (dolist (buffer (dir-treeview-get-buffers))
+      (with-current-buffer buffer
+        (dir-treeview-apply-recursively dir-treeview-start-node callback))))
+
+(defun dir-treeview-get-nodes-in-each-buffer (&optional filter)
+  "Return all nodes of all dir-treeview buffers as a list.
+If the optinal argument FILTER is specified, it must be function accepting a
+single node as argument.  Only nodes for which this function returns non-nil
+are included in the resulting list in this case. "
+  (unless filter (setq filter (lambda (_node) t)))
+  (let ( (nodes ()) )
+    (dir-treeview-for-each-node-in-each-buffer (lambda (node) (if (funcall filter node) (push node nodes))))
+    nodes))
+
+(defvar dir-treeview-file-watch-enabled nil
+  "Whether file watch is enabled or not.
+
+See chapter \"File Notifications\" of the GNU Emacs Lisp Reference Manual for
+more information about file watching.")
+
+(defun dir-treeview-file-notify-callback (event)
+  "Handle file event EVENT.
+This function is used as callback for the file watching service.  The latter
+notifies Emacs of file changes outside Emacs.
+
+See chapter \"File Notifications\" of the GNU Emacs Lisp Reference Manual for
+more information."
+  (let ( (descriptor (nth 0 event))
+         (action (nth 1 event))
+         (filename (nth 2 event))
+         (filename1 (nth 3 event)) )
+    (dolist (buffer (buffer-list))
+      (with-current-buffer buffer
+        (when (eq major-mode 'dir-treeview-mode)
+          (cond ((eq action 'created)
+                 (dir-treeview-add-node-for-absolute-name filename))
+                ((eq action 'deleted)
+                 (dir-treeview-remove-node-with-absolute-name filename))
+                ((eq action 'renamed)
+                 (dir-treeview-move-node-by-absolute-name filename filename1))))))))
+
+(defvar dir-treeview-file-watch-alist ()
+  "Association list of watched directories and file watch descriptors.
+The keys are the absolute paths of the directories, the values the corresponding
+file watch descriptors as returned by `file-notify-add-watch'.")
+
+(defun dir-treeview-remove-unused-file-watches ()
+  "Remove file watches not referring to any node in any dir-treeview buffer.
+Compares the directories in `dir-treeview-file-watch-alist' with the directories
+occurring as nodes in any dir-treeview buffer.  For each node for which no node
+exists, the corresponding file watch descriptor is removed by means of
+`file-notify-rm-watch', and the corresponding entry in the alist
+`dir-treeview-file-watch-alist' is removed."
+  (let ( dirnames new-watch-alist )
+    ;; Get paths of all directory nodes and store them in 'dirnames':
+    (dolist (node (dir-treeview-get-nodes-in-each-buffer 'dir-treeview-directory-p))
+      (let ( (dirname (treeview-get-node-prop node 'absolute-name)) )
+        (unless (member dirname dirnames) (push dirname dirnames))))
+    ;; Iterate through watch alist, remove all watches of directories not in 'directories':
+    (while (setq item (pop dir-treeview-file-watch-alist))
+      (if (member (car item) dirnames)
+          (push item new-watch-alist)
+        (file-notify-rm-watch (cdr item))))
+    ;; Set new watch alist:
+    (setq dir-treeview-file-watch-alist new-watch-alist)))
+        
+(defun dir-treeview-add-to-file-watch-if-applicable (node)
+  (when (and (dir-treeview-directory-p node) (not (eq (treeview-get-node-state node) 'folded-unread)))
+    (let ( (dirname (treeview-get-node-prop node 'absolute-name)) )
+      (unless (assoc dirname dir-treeview-file-watch-alist)
+        (push (cons dirname (file-notify-add-watch dirname '(change) 'dir-treeview-file-notify-callback))
+              dir-treeview-file-watch-alist)))))
+
+(defun dir-treeview-switch-off-file-watch ()
+  "Turn off the file watch service.
+
+See chapter \"File Notifications\" of the GNU Emacs Lisp Reference Manual for
+more information about file watching."
+  (interactive)
+  (while dir-treeview-file-watch-alist
+    (file-notify-rm-watch (cdr (pop dir-treeview-file-watch-alist))))
+  (setq dir-treeview-file-watch-enabled nil))
+
+(defun dir-treeview-switch-on-file-watch ()
+  "Turn on the file watch service.
+
+See chapter \"File Notifications\" of the GNU Emacs Lisp Reference Manual for
+more information about file watching."
+  (interactive)
+  (require 'filenotify)
+  (setq dir-treeview-file-watch-enabled t)
+  (dir-treeview-for-each-node-in-each-buffer
+   (lambda (node) (dir-treeview-add-to-file-watch-if-applicable node))))
+
+(defun dir-treeview-shutdown-file-watch-if-last-buffer ()
+  "Turn off file watch if the current buffer is the only dir-treeview buffer.
+
+This function is called by `kill-buffer-hook' to shut down the file watch
+service if the last dir-treeview buffer is about to be closed.
+
+See chapter \"File Notifications\" of the GNU Emacs Lisp Reference Manual for
+more information about file watching."
+  (if (and dir-treeview-file-watch-enabled
+           (eq major-mode 'dir-treeview-mode)
+           (equal (length (dir-treeview-get-buffers)) 1))
+      (dir-treeview-switch-off-file-watch)))
+
+(defun dir-treeview-after-node-expanded (node)
+  "Do things that must be done after NODE has been expanded.  This
+function is the implementation of `treeview-after-node-expanded-function' in
+dir-treeview.  Therefore, it is called each time a node is expanded.
+Currently,  the function runs only one action, i.e., it calles
+`dir-treeview-add-to-file-watch-if-applicable' provied
+`dir-treeview-file-watch-enabled' is non-nil."
+  (if dir-treeview-file-watch-enabled (dir-treeview-add-to-file-watch-if-applicable node)))
+
+(defun dir-treeview-create-parent-link ()
+  "Create the link to the parent directory."
+  (beginning-of-line)
+  (let* ( (start (point))
+          (overlay (progn
+                     (treeview-put dir-treeview-parent-dir-control)
+                     (make-overlay start (point)))) )
+    (overlay-put overlay 'keymap (treeview-make-keymap dir-treeview-parent-dir-control-keymap))
+    (overlay-put overlay 'face 'dir-treeview-control-face)
+    (overlay-put overlay 'mouse-face 'dir-treeview-control-mouse-face) ))
 
 (defun dir-treeview-create-mode-line-option-entry (option-symbol label help-text)
   "Create a mode line entry for a yes/no option.
@@ -939,6 +1160,11 @@ directories, and open terminals in directories."
 
 (put 'dir-treeview-mode 'mode-class 'special)
 
+(defun dir-treeview-buffer-name (dir)
+  "Return the name of a dir-treeview buffer with DIR as root directory.
+Returns \"*dir-treeview DIR *\" (where DIR is substituted by the value of DIR)."
+  (concat "*dir-treeview " dir "*"))
+
 (defun dir-treeview-create-buffer (dir)
   "Create a dir-treeview buffer with DIR as root directory."
   (setq dir (expand-file-name dir))
@@ -963,11 +1189,13 @@ directories, and open terminals in directories."
           treeview-get-label-keymap-function 'dir-treeview-get-label-keymap
           treeview-get-label-face-function 'dir-treeview-get-label-face
           treeview-get-label-mouse-face-function (lambda (_node) 'dir-treeview-label-mouse-face)
+          treeview-after-node-expanded-function 'dir-treeview-after-node-expanded
           dir-treeview-start-node (dir-treeview-new-node dir nil))
     (treeview-expand-node dir-treeview-start-node)
     (dir-treeview-redisplay)
     (goto-char (point-min))
     (dir-treeview-mode)
+    (when dir-treeview-use-file-watch (unless dir-treeview-file-watch-enabled (dir-treeview-switch-on-file-watch)))
     buffer))
 
 ;;;###autoload
@@ -1078,7 +1306,7 @@ exists already, the function asks for confirmation in the minibuffer before
 overwriting it."
   (let* ( (filename (treeview-get-node-prop node 'absolute-name))
           (prompt (concat "Copy " (dir-treeview-local-filename filename) " to: "))
-          (new-filename (expand-file-name (dir-treeview-read-file-name prompt))) )
+          (new-filename (expand-file-name (dir-treeview-read-file-name prompt (file-name-directory filename)))) )
     (if (file-directory-p new-filename)
         (setq new-filename (concat (file-name-as-directory new-filename) (dir-treeview-local-filename filename))))
     (if (or (not (file-exists-p new-filename))
@@ -1095,7 +1323,7 @@ exists already, the function asks for confirmation in the minibuffer before
 overwriting it."
   (let* ( (filename (treeview-get-node-prop node 'absolute-name))
           (prompt (concat "Rename " (dir-treeview-local-filename filename) " to: "))
-          (new-filename (expand-file-name (dir-treeview-read-file-name prompt))) )
+          (new-filename (expand-file-name (dir-treeview-read-file-name prompt (file-name-directory filename)))) )
     (if (file-directory-p new-filename)
         (setq new-filename (concat (file-name-as-directory new-filename) (dir-treeview-local-filename filename))))
     (if (or (not (file-exists-p new-filename))
@@ -1143,57 +1371,6 @@ already, asks for confirmation in the minibuffer before overwriting it."
   (make-directory (dir-treeview-read-directory-name "New subdirectory: " (treeview-get-node-prop node 'absolute-name)))
   (dir-treeview-refresh-node node))
 
-(defcustom dir-treeview-open-commands
-  
-  '((dir-treeview-is-image-p "gimp" ("gimp"))
-    ("\\.x?html$" "Default browser" (browse-url))
-    ("\\.x?html$" "Firefox" (browse-url-firefox))
-    ("\\.\\(?:pdf\\|dvi\\|ps\\)$" "okular" ("okular"))
-    ("\\.\\(?:pdf\\|dvi\\|ps\\)$" "evince" ("evince"))
-    ("\\.pdf$" "acroread" ("acroread"))
-    ("\\.\\(?:od[tsgmpfb]\\|ot[thsgp]\\|oxt\\|doc[xm]?\\|xls[xm]?\\|ppt[xm]?\\)$" "libreoffice" ("libreoffice"))
-    ("\\.\\(?:ogg\\|mp[34]\\|mpe?g\\|avi\\|mov\\|qt\\)$" "vlc" ("vlc")))
-  
-  "List of programs and functions to open files.
-
-This list controls the entries of the 'Open with ...' submenu of the popup menu
-of a node.  Each entry consists of a 'tester' and an 'action'.  The tester
-controls whether the submenu entry is shown, and the action controls what
-happens when the entry is clicked.
-
-The tester must be either a regular expression or a Lisp function.  If a regular
-expression, the entry is excluded from the submenu when the absolute filename of
-the node doesn't match the regular expression.  If the tester is a Lisp
-function, the function is called with the absolute filename of the node as
-argument, and the entry is excluded from the submenu if the function returns nil.
-
-The action may be either an external program or a Lisp function.  An external
-program consists of an executable name and, optionally, a list of parameters.
-If the action is an external program, the corresponding executable is called
-with the specified parameters (if any) and the absolute filename of the node
-added as the last parameter.  If the action is a Lisp function, the function is
-called with one argument, the absolute filename of the node.
-
-If the action is an external program, but the executable doesn't exist, the
-entry is excluded from the submenu."
-  
-  :group 'dir-treeview
-  :type '(repeat (list (choice :format                 "Tester Type      : %[Select Type%]\n            %v"
-                               (regexp :tag            "Test Regexp      ")
-                               (function :tag          "Test Function    "))
-                       (string :tag                    "Name             ")
-                       (choice :format                 "Command Type     : %[Select Type%]\n            %v"
-                               (list :tag              "External Program"
-                                     :format           "-- External Program --\n%v"
-                                     (string :tag      "Program Name     ")
-                                     (repeat :tag      "Parameters       "
-                                             (string :tag "     ")))
-                               (list :tag              "Function"
-                                     :format           "-- Function --\n%v"
-                                     (function :tag    "Function Name    ")
-                                     (repeat :tag      "Parameters       "
-                                             (sexp :tag"     ")))))))
-
 (defun dir-treeview-get-open-with-menu (node)
   "Create and return the 'Open with ...' submenu of the popup menu of NODE.
 The submenu offers external programs or Lisp functions to open the file
@@ -1218,14 +1395,6 @@ For the parent menu (the popup menu of NODE), see `dir-treeview-get-node-menu'."
         (setq command-table (cdr command-table))))
     (setq menu (append menu (list (vector "Other . . ." (list 'dir-treeview-open-with-other filename)))))
     menu))
-
-(defcustom dir-treeview-get-node-menu-function
-  'dir-treeview-get-default-node-menu
-  "Function which creates the popup menu of a node.
-Called with one argument, the node for which to popup the menu.  Should return
-a menu-specifying object as described in the GNU Emacs Lisp Reference Manual."
-  :group 'dir-treeview
-  :type 'function)
 
 (defun dir-treeview-get-default-node-menu (node)
   "Create and return the default popup menu for NODE.
@@ -1358,6 +1527,8 @@ If there is no node at point, does nothing."
         :button (:toggle . (symbol-value 'dir-treeview-show-hidden-files))
         :help "Toggle whether hidden files are shown or not"))
     map))
+
+(add-hook 'kill-buffer-hook 'dir-treeview-shutdown-file-watch-if-last-buffer)
 
 (provide 'dir-treeview)
 
