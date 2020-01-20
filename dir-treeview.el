@@ -344,8 +344,12 @@ expression should be \"[\\/]\"."
 (defcustom dir-treeview-open-commands
   
   '((dir-treeview-is-image-p "gimp" ("gimp"))
+    (dir-treeview-is-image-p "gwenview" ("gwenview"))
     ("\\.x?html$" "Default browser" (browse-url))
-    ("\\.x?html$" "Firefox" (browse-url-firefox))
+    ("\\.x?html$" "Chrome" ("google-chrome"))
+    ("\\.x?html$" "Chrome" ("google-chrome-stable"))
+    ("\\.x?html$" "Chromium" ("chromium"))
+    ("\\.x?html$" "Firefox" ("firefox"))
     ("\\.\\(?:pdf\\|dvi\\|ps\\)$" "okular" ("okular"))
     ("\\.\\(?:pdf\\|dvi\\|ps\\)$" "evince" ("evince"))
     ("\\.pdf$" "acroread" ("acroread"))
@@ -546,6 +550,19 @@ Otherwise, the directory is read in the minibuffer."
   (let ( (use-file-dialog dir-treeview-use-file-dialog) )
     (file-name-as-directory
      (read-directory-name prompt dir default-dirname mustmatch initial))))
+
+(defun dir-treeview-read-new-file-name (prompt dir)
+  "Read a name that is not an existing filename in the directory DIR.
+Prompts with PROMPT. Intended for reading the name of a new file to be created.
+Uses `dir-treeview-read-file-name' internally."
+  (setq dir (file-name-as-directory dir))
+  (let( (filename (dir-treeview-read-file-name prompt dir "" nil "")) )
+    (setq filename (expand-file-name filename dir))
+    (when (file-exists-p filename)
+      (user-error "File \"%s\" already exists" filename))
+    (when (not (equal (file-name-directory filename) dir))
+      (user-error "Path \"%s\" doesn't denote a file in this directory" filename))
+    filename))
 
 (defun dir-treeview-char-code-to-symbol (code)
   "Return the symbol for the hexadecimal character code CODE.
@@ -791,6 +808,12 @@ conditions:
              (and (not dir-treeview-show-hidden-files) (string-match "^\\." local-name))
              (and (not dir-treeview-show-backup-files) (string-match "~$" local-name)) ))))
 
+(defun dir-treeview-accept-filename (filename)
+  "Return non-nil if FILENAME should be shown in the tree, otherwise nil.
+Calls the function stored in the customizable variable
+`dir-treeview-accept-filename-function'."
+  (funcall dir-treeview-accept-filename-function filename))
+
 (defun dir-treeview-filter-dir-contents (contents)
   "Return the elements of CONTENTS that should be shown in the tree.
 CONTENTS should be a list of filenames.  Typically it is a list of all filenames
@@ -799,7 +822,7 @@ in  a directoy.  The function returns a list of all elements of CONTENTS for whi
   (let ( (filtered-contents ()) )
     (while contents
       (let ( (filename (car contents)) )
-        (if (funcall dir-treeview-accept-filename-function filename)
+        (if (dir-treeview-accept-filename filename)
               (setq filtered-contents (cons filename filtered-contents)))
         (setq contents (cdr contents))))
     filtered-contents))
@@ -923,23 +946,35 @@ to the tree, and displayed. Otherwise, the function does nothing."
 
 (defun dir-treeview-remove-node-with-absolute-name (absolute-name)
   (let ( (node (dir-treeview-find-node-with-absolute-name absolute-name)) )
-    (when node (treeview-remove-node node))))
+    (when node
+      (dir-treeview-log "remove-node" node)
+      (treeview-remove-node node))))
 
 (defun dir-treeview-move-node-by-absolute-name (old-absolute-name new-absolute-name)
-  (let* ( (node (dir-treeview-find-node-with-absolute-name old-absolute-name))
-          (new-parent (dir-treeview-find-node-with-absolute-name (dir-treeview-parent-filename new-absolute-name))) )
-    (cond ((and node new-parent)
-           (unless (eq (treeview-get-node-parent) new-parent)
-             (treeview-remove-node node)
-             (treeview-add-child new-parent node 'dir-treeview-compare-nodes))
-           (treeview-set-node-name node (dir-treeview-local-filename new-absolute-name))
-           (treeview-set-node-prop node 'absolute-name new-absolute-name)
-           (treeview-redisplay-node node))
-          ((node)
-           (treeview-remove-node node))
+  (let* ( (old-node (dir-treeview-find-node-with-absolute-name old-absolute-name))
+          (new-parent (dir-treeview-find-node-with-absolute-name (dir-treeview-parent-filename new-absolute-name)))
+          (new-node (dir-treeview-find-node-with-absolute-name new-absolute-name)) )
+    (dir-treeview-log "move-node-from" old-node)
+    (dir-treeview-log "move-node-to" new-node)
+    (when new-node (treeview-remove-node new-node))
+    (cond ((and old-node new-parent)
+           (unless (eq (treeview-get-node-parent old-node) new-parent)
+             (treeview-remove-node old-node)
+             (treeview-add-child new-parent old-node 'dir-treeview-compare-nodes))
+           (treeview-set-node-name old-node (dir-treeview-local-filename new-absolute-name))
+           (treeview-set-node-prop old-node 'absolute-name new-absolute-name)
+           (treeview-redisplay-node old-node))
+          ((old-node)
+           (treeview-remove-node old-node))
           ((new-parent)
            (treeview-add-child
             new-parent (dir-treeview-new-node new-absolute-name new-parent) 'dir-treeview-compare-nodes)))))
+
+(defun dir-treeview-redisplay-node-with-absolute-name (absolute-name)
+  (let ( (node (dir-treeview-find-node-with-absolute-name absolute-name)) )
+    (when node
+      (dir-treeview-log "redisplay-node" node)
+      (treeview-redisplay-node node))))
 
 (defun dir-treeview-redisplay ()
   "Redisplay current buffer, which should be a dir-treeview buffer."
@@ -1011,6 +1046,10 @@ are included in the resulting list in this case. "
 See chapter \"File Notifications\" of the GNU Emacs Lisp Reference Manual for
 more information about file watching.")
 
+
+(defun dir-treeview-log (label object)
+  (print (cons label object) (get-buffer-create "*dir-treeview-log*")))
+
 (defun dir-treeview-file-notify-callback (event)
   "Handle file event EVENT.
 This function is used as callback for the file watching service.  The latter
@@ -1018,6 +1057,7 @@ notifies Emacs of file changes outside Emacs.
 
 See chapter \"File Notifications\" of the GNU Emacs Lisp Reference Manual for
 more information."
+  (dir-treeview-log "file-notify" event)
   (let ( (descriptor (nth 0 event))
          (action (nth 1 event))
          (filename (nth 2 event))
@@ -1026,11 +1066,19 @@ more information."
       (with-current-buffer buffer
         (when (eq major-mode 'dir-treeview-mode)
           (cond ((eq action 'created)
-                 (dir-treeview-add-node-for-absolute-name filename))
+                 ;; Provided filename is accepted by the tree, add a new node:
+                 (when (dir-treeview-accept-filename filename)
+                   (dir-treeview-add-node-for-absolute-name filename)))
                 ((eq action 'deleted)
                  (dir-treeview-remove-node-with-absolute-name filename))
                 ((eq action 'renamed)
-                 (dir-treeview-move-node-by-absolute-name filename filename1))))))))
+                 (if (dir-treeview-accept-filename filename1)
+                     ;; If target filename is accepted by the tree, move nodes, otherwise,
+                     ;; simply remove node for source filename:
+                     (dir-treeview-move-node-by-absolute-name filename filename1)
+                   (dir-treeview-remove-node-with-absolute-name filename)))
+                ((eq action 'attribute-changed)
+                 (dir-treeview-redisplay-node-with-absolute-name filename)) ))))))
 
 (defvar dir-treeview-file-watch-alist ()
   "Association list of watched directories and file watch descriptors.
@@ -1269,7 +1317,7 @@ See also `dir-treeview-open-file' and `dir-treeview-open-file-at-point'."
   "Open the file corresponding to the node at point.
 See also `dir-treeview-open-file' and `dir-treeview-open-file-at-event'."
   (interactive)
-  (dir-treeview-open-file (treeview-get-node-at-pos (point))))
+  (treeview-call-for-node-at-point 'dir-treeview-open-file))
         
 (defun dir-treeview-open-with (command params filename)
   "Open FILENAME with an external program.
@@ -1283,7 +1331,7 @@ strings.."
   "Open FILENAME with an external program read in the minibuffer.
 Reads the name or path of an external program in the minibuffer, and calls it
 with FILENAME as argument."
-  (let ( (command (read-file-name "Command: ")) )
+  (let ( (command (read-shell-command "Command: ")) )
     (dir-treeview-open-with command nil filename)))
 
 (defun dir-treeview-open-terminal (dir)
@@ -1297,6 +1345,12 @@ The terminal program is specified by the customizable variable
           (customize-variable 'dir-treeview-terminal-program))
     (let ( (default-directory (expand-file-name dir)) )
       (call-process dir-treeview-terminal-program nil 0 nil))))
+
+(defun dir-treeview-open-new-file (dir)
+  "Open a buffer with a new file in directory DIR.
+Asks the user to input the name of the file (which must not exist yet), creates
+a buffer for that file, and switches to that buffer."
+  (find-file (dir-treeview-read-new-file-name "New file: " dir)))
 
 (defun dir-treeview-copy-file (node)
   "Copy the file corresponding to NODE.
@@ -1314,7 +1368,14 @@ overwriting it."
         (let ( (parent-of-new (dir-treeview-find-node-with-absolute-name (dir-treeview-parent-filename new-filename))) )
           (copy-file filename new-filename t)
           (if parent-of-new (dir-treeview-refresh-node parent-of-new)) ))))
- 
+
+(defun dir-treeview-copy-file-at-point ()
+  "Copy the file corresponding to the node at point.
+Calls `dir-treeview-copy-file' with the node at point.  If there is no node at
+point, does nothing."
+  (interactive)
+  (treeview-call-for-node-at-point 'dir-treeview-copy-file))
+
 (defun dir-treeview-rename-file-or-dir (node)
   "Rename the file or directory corresponding to NODE.
 Reads the target in the minibuffer.  If the target is a directory, the file
@@ -1343,6 +1404,12 @@ Asks for confirmation in the minibuffer."
         (progn
           (delete-file filename)
           (dir-treeview-refresh-node (treeview-get-node-parent node)) ))))
+
+(defun dir-treeview-delete-file-at-point ()
+  "Delete the file corresponding to the node at point.
+Asks for confirmation in the minibuffer. If there is no node at point, does nothing."
+  (interactive)
+  (treeview-call-for-node-at-point 'dir-treeview-delete-file))
 
 (defun dir-treeview-delete-dir (node)
   "Recursively delete the directory corresponding to NODE.
@@ -1380,7 +1447,8 @@ represented by NODE.  The submenu is controlled by the customizable variable
 For the parent menu (the popup menu of NODE), see `dir-treeview-get-node-menu'."
   (let ( (filename (treeview-get-node-prop node 'absolute-name))
          (command-table dir-treeview-open-commands)
-         (menu (list "Open with . . .")) )
+         (menu (list "Open with . . ."))
+         (menu-names ()) )
     (while command-table
       (let ( (key (nth 0 (car command-table))) )
         (if (if (functionp key) (funcall key filename) (string-match key filename))
@@ -1391,7 +1459,9 @@ For the parent menu (the popup menu of NODE), see `dir-treeview-get-node-menu'."
                                   (list 'apply (list 'quote command) filename (list 'quote params))
                                 (if (executable-find command)
                                     (list 'dir-treeview-open-with command (list 'quote params) filename)))) )
-              (if callback (setq menu (append menu (list (vector name callback))))) ))
+              (when (and callback (not (member name menu-names)))
+                (setq menu (append menu (list (vector name callback)))
+                      menu-names (cons name menu-names))) ))
         (setq command-table (cdr command-table))))
     (setq menu (append menu (list (vector "Other . . ." (list 'dir-treeview-open-with-other filename)))))
     menu))
@@ -1412,6 +1482,7 @@ This is the default implementation of the customizable variable
               "--"
               (vector "Open Terminal" (list 'dir-treeview-open-terminal absolute-name))
               (vector "Re-read" (list 'dir-treeview-refresh-node (list 'quote node)))
+              (vector "Create File" (list 'dir-treeview-open-new-file absolute-name))
               (vector "Create Subdir" (list 'dir-treeview-create-subdir (list 'quote node)))
               "--"
               (vector "Copy" (list 'dir-treeview-copy-dir (list 'quote node)))
