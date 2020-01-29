@@ -782,8 +782,8 @@ If NODE belongs to a directory, returns the keymap defined by
   (if (dir-treeview-directory-p node) (treeview-make-keymap dir-treeview-control-keymap)))
 
 (defun dir-treeview-get-label-keymap (_node)
-  "Return the keymap for the label of _ NODE.
-This is the keymap defined by `dir-treeview-label-keymap'."
+  "Return the keymap for the label of _NODE.
+The keymap is defined by `dir-treeview-label-keymap'."
   (treeview-make-keymap dir-treeview-label-keymap))
 
 (defun dir-treeview-get-label-face (node)
@@ -1288,6 +1288,13 @@ redisplayed by calling `treeview-redisplay-node'."
     (treeview-redisplay-node node)
     (goto-char (if (<= pos (point-max)) (if (>= pos (point-min)) pos (point-min)) (point-max))) ))
 
+(defun dir-treeview-refresh-node-at-point ()
+  "Update and redisplay the node at point.
+Calls `dir-treeview-refresh-node' with the node at point.
+If there is no node at point, does nothing."
+  (interactive)
+  (treeview-call-for-node-at-point 'dir-treeview-refresh-node))
+
 (defun dir-treeview-refresh ()
   "Refresh the entire tree."
   (interactive)
@@ -1302,6 +1309,20 @@ redisplayed by calling `treeview-redisplay-node'."
       (setq dir-treeview-start-node (dir-treeview-new-node parent-dir))
       (treeview-expand-node dir-treeview-start-node)
       (dir-treeview-redisplay))))
+
+(defun dir-treeview-call-for-file-at-point (action-function &optional error-when-dir error-when-non-dir)
+  "Apply ACTION-FUNCTION to the filename of the node at point.
+ACTION-FUNCTION must be the symbol of a function.  The function is called with
+one argument, the absolute filename of the node at point.  If there is no node
+at point, does nothing.  If ERROR-WHEN-DIR is non-nil, an error is signaled if
+the correcponing file is a directory.  If ERROR-WHEN-NON-DIR i non-nil, an
+error is signaled if the correcponing file is not a directory."
+  (let* ( (node (treeview-get-node-at-pos (point)))
+          (filename (when node (treeview-get-node-prop node 'absolute-name))) )
+    (when filename
+      (when (and error-when-dir (file-directory-p filename)) (user-error "\"%s\" is a directory"))
+      (when (and error-when-non-dir (not (file-directory-p filename))) (user-error "\"%s\" is not a directory"))
+      (funcall action-function filename))))
 
 (defun dir-treeview-open-file (node)
   "Open the file corresponding to NODE."
@@ -1334,23 +1355,43 @@ with FILENAME as argument."
   (let ( (command (read-shell-command "Command: ")) )
     (dir-treeview-open-with command nil filename)))
 
-(defun dir-treeview-open-terminal (dir)
-  "Open a terminal in directory DIR.
-The terminal program is specified by the customizable variable
-`dir-treeview-terminal-program'.  If the variable is not set, an error is thrown."
+(defun dir-treeview-open-terminal (location)
+  "Open a terminal at LOCATION.
+LOCATION must be the name of a file or directory.  In case of a directory, the
+terminal is opened in that directory.  In case of a non-directory file, the
+terminal is opened in the directory containing the file.  The terminal program
+is specified by the customizable variable `dir-treeview-terminal-program'.
+If the variable is not set, the user is asked to set it now."
+  (setq location (expand-file-name location))
+  (unless (file-directory-p location) (setq location (dir-treeview-parent-filename location)))
   (if (or (not dir-treeview-terminal-program) (string-equal dir-treeview-terminal-program ""))
       (if (yes-or-no-p (concat "No terminal program specified. "
                                "You must set the customizable variable 'dir-treeview-terminal-program' first. "
                                "Set ist now? "))
           (customize-variable 'dir-treeview-terminal-program))
-    (let ( (default-directory (expand-file-name dir)) )
+    (let ( (default-directory location) )
       (call-process dir-treeview-terminal-program nil 0 nil))))
+
+(defun dir-treeview-open-terminal-at-point ()
+  "Open a terminal in the location corresponding to the node at point.
+Calls `dir-treeview-open-terminal' with the absolute filename of the node at
+point.  If there is no node at point, does nothing."
+  (interactive)
+  (dir-treeview-call-for-file-at-point 'dir-treeview-open-terminal))
 
 (defun dir-treeview-open-new-file (dir)
   "Open a buffer with a new file in directory DIR.
 Asks the user to input the name of the file (which must not exist yet), creates
 a buffer for that file, and switches to that buffer."
   (find-file (dir-treeview-read-new-file-name "New file: " dir)))
+
+(defun dir-treeview-open-new-file-at-point ()
+  "Open a buffer with a new file in the directory represented by the node at point.
+Calls `dir-treeview-open-new-file' with the absolute filename of the node at
+point.  Signals an error if the filename does not belong to a directory.
+If there is no node at point, does nothing."
+  (interactive)
+  (dir-treeview-call-for-file-at-point 'dir-treeview-open-new-file nil t))
 
 (defun dir-treeview-copy-file (node)
   "Copy the file corresponding to NODE.
@@ -1400,16 +1441,9 @@ overwriting it."
   "Delete the file corresponding to NODE.
 Asks for confirmation in the minibuffer."
   (let ( (filename (treeview-get-node-prop node 'absolute-name)) )
-    (if (yes-or-no-p (concat "Delete " (dir-treeview-local-filename filename) "? "))
-        (progn
-          (delete-file filename)
-          (dir-treeview-refresh-node (treeview-get-node-parent node)) ))))
-
-(defun dir-treeview-delete-file-at-point ()
-  "Delete the file corresponding to the node at point.
-Asks for confirmation in the minibuffer. If there is no node at point, does nothing."
-  (interactive)
-  (treeview-call-for-node-at-point 'dir-treeview-delete-file))
+    (when (yes-or-no-p (concat "Delete " (dir-treeview-local-filename filename) "? "))
+      (delete-file filename)
+      (dir-treeview-refresh-node (treeview-get-node-parent node)) )))
 
 (defun dir-treeview-delete-dir (node)
   "Recursively delete the directory corresponding to NODE.
@@ -1418,6 +1452,16 @@ Asks for confirmation in the minibuffer."
     (when (yes-or-no-p (concat "Recursively delete " (dir-treeview-local-filename dir) " and all its contents? "))
       (delete-directory dir t)
       (dir-treeview-refresh-node (treeview-get-node-parent node)) )))
+
+(defun dir-treeview-delete-file-or-dir-at-point ()
+  "Delete the file or directory corresponding to the node at point.
+If there is a node at point, calls `dir-treeview-delete-dir' if the node
+corresponds to a directory, and `dir-treeview-delete-file' if the node
+corresponds to a non-directory.  If there is no node at point, does nothing."
+  (interactive)
+  (let ( (node (treeview-get-node-at-pos (point))) )
+    (when node
+      (if (dir-treeview-directory-p node) (dir-treeview-delete-dir node) (dir-treeview-delete-file node)))))
 
 (defun dir-treeview-copy-dir (node)
   "Copy the directory corresponding to NODE.
@@ -1500,11 +1544,15 @@ This is the default implementation of the customizable variable
                 (vector "View in Other Window" (list 'view-file-other-window absolute-name))
                 (vector "View in New Frame" (list 'view-file-other-frame absolute-name))
                 "--"
+                (vector "Open Terminal" (list 'dir-treeview-open-terminal absolute-name))
+                "--"
                 (vector "Copy" (list 'dir-treeview-copy-file (list 'quote node)))
                 (vector "Rename" (list 'dir-treeview-rename-file-or-dir (list 'quote node)))
                 (vector "Delete" (list 'dir-treeview-delete-file (list 'quote node))))
         (list local-name
               (dir-treeview-get-open-with-menu node)
+              "--"
+              (vector "Open Terminal" (list 'dir-treeview-open-terminal absolute-name))
               "--"
               (vector "Copy" (list 'dir-treeview-copy-file absolute-name))
               (vector "Rename" (list 'dir-treeview-rename-file-or-dir absolute-name))
@@ -1571,6 +1619,9 @@ If there is no node at point, does nothing."
     (define-key map "b" 'dir-treeview-toggle-show-backup-files)
     (define-key map (kbd "<down>") 'treeview-next-line)
     (define-key map (kbd "<up>") 'treeview-previous-line)
+    (define-key map (kbd ".") 'dir-treeview-refresh-node-at-point)
+    (define-key map (kbd "d") 'dir-treeview-delete-file-or-dir-at-point)
+    (define-key map (kbd "t") 'dir-treeview-open-terminal-at-point)
     (define-key map [menu-bar treeview]
       (cons "Dir-Treeview" (make-sparse-keymap "Dir-Treeview")))
     (define-key map [menu-bar treeview customize]
