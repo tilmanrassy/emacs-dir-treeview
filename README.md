@@ -80,10 +80,10 @@ Usage
 
 ### Start
 
-The normal way to start dir-treeview is by the command `dir-treeview`. This is why we bound
-a key - F9 - to it in the installation (see section "Installation" above). It shows the tree originating at your home
-directory. If you want to start dir-treeview with a different origin, use the command `dir-treeview-open`,
-which will ask for the origin directory in the minibuffer:
+The normal way to start dir-treeview is by the command `dir-treeview`. This is why we recommended to bind
+a key to it in the "Installation" section above. It shows the tree originating at your home
+directory. If you want to start dir-treeview with a different origin, use the command `dir-treeview-open`. It
+will ask for the origin directory in the minibuffer:
 
 ```
     M-x dir-treeview-open RET <directory> RET
@@ -117,7 +117,7 @@ A right-click on an node opens the nodes's context menu. Alternativly, the conte
 
 Most of the menu items should be self-explanatory.
 
-The `Open with...` item opens a submenu with external prograns or Lisp functions to open the file.
+The `Open with...` item opens a submenu with external programs or Lisp functions to open the file.
 
 The `Open Terminal` item opens a shell in terminal program at the corresponding directory.
 
