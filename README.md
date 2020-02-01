@@ -6,8 +6,16 @@ Emacs file system navigator and simple file manager.
 * [Overview](#overview)
 * [Screenshots](#screenshots)
 * [Installation](#installation)
+  * [Installation of dir-treeview](#installation-of-dir-treeview)
+  * [Installation of the "pleasant" theme](#installation-of-the-pleasant-theme)
 * [Usage](#usage)
+  * [Start](#start)
+  * [Current vs. side window](#current-vs-side-window)
+  * [Navigating in the tree, with and without mouse](#navigating-in-the-tree-with-and-without-mouse)
+  * [The context menu](#the-context-menu)
+  * [Key bindings](#key-bindings)
 * [Customization](#customization)
+  
 
 
 Overview
@@ -89,6 +97,11 @@ will ask for the origin directory in the minibuffer:
     M-x dir-treeview-open RET <directory> RET
 ```
 
+The first line of the dir-treeview buffer shows the origin of the tree. The symbol `..` in the second line represents the parent directory. A click on the symbol displays the tree of the parent directory. Below that the actual tree starts.
+
+The major mode of the buffer is `dir-treeview-mode`.
+
+
 ### Current vs. side window
 
 By default, dir-treeview uses the current window to display the tree. However, it is also possible to display the
@@ -96,7 +109,7 @@ tree in a side window (cf. [Side Windows](https://www.gnu.org/software/emacs/man
 
 ### Navigating in the tree, with and without mouse
 
-Navigating in the tree with the mouse is straight forward. A left click on the `[+]` or `[-]` symbols expand or collapse the respective directory. A left click on a filename opens the respective file in Emacs.
+Navigating in the tree with the mouse is straight forward. A left click on the `[+]` or `[-]` symbols expand or collapse the respective directory. A left click on a filename opens the respective file in Emacs. A left click on the  `..` symbol atop the first node switches to the tree originating at the parent directory.
 
 It is possible to navigate in the tree completely without the mouse, only with the keyboard:
 
@@ -104,6 +117,7 @@ It is possible to navigate in the tree completely without the mouse, only with t
 * The `SPACE` key expands/collapses the respective directory if the point is on a `[+]`/`[-]` symbol.
 * The `RETURN` key expands/collapses the respective directory if the point is on a `[+]`/`[-]` symbol.
 * The `RETURN` key opens the respective file in Emacs if the point is on a filename.
+* The `RETURN` key switches to the tree of the parent node if the point is on the  `..` symbol atop the first node.
 
 ### The context menu
 
@@ -123,7 +137,45 @@ The `Open Terminal` item opens a shell in terminal program at the corresponding 
 
 Both the context menu and the `Open with...` submenu are customizable.
 
+### Key bindings
 
+As usual in Emacs, dir-treeview activates a special local keymap in its buffers (cf. [Local Keymaps](https://www.gnu.org/software/emacs/manual/html_node/emacs/Local-Keymaps.html "Local Keymaps - GNU Emacs Manual") in the Emacs Manual). Besides this, dir-treeview defines three additional keymaps which are only active in particular places of the buffer: the *control keymap* inside the `[+]`/`[-]` symbols, the *label keymap* inside the filenames of the nodes, and the *parent dir keymap* inside the  `..` symbol atop the first node. The following tables list the default key bindings of the keymaps:
+
+
+#### Local keymap
+
+Key         | Action
+------------|-------------------------
+`<down>`    | Move to next node
+`<up>`      | Move to previuos node
+`.`         | Reload node
+`d`         | Delete file or directory
+`t`         | Open terminal
+`h`         | Toggle show hidden files
+`b`         | Toggle show backup files
+
+
+#### Control keymap
+
+Key         | Action
+------------|---------------------
+`<mouse-1>` | Expand/collapse node
+`<mouse-2>` | Expand/collapse node
+`<mouse-3>` | Open context menu
+`RET`       | Expand/collapse node
+`SPC`       | Expand/collapse node
+`m`         | Open context menu
+
+#### Label keymap
+
+Key         | Action
+------------|---------------------
+`<mouse-1>` | Open file in Emacs
+`<mouse-2>` | Open file in Emacs
+`<mouse-3>` | Open context menu
+`RET`       | Open file in Emacs
+`m`         | Open context menu
+ 
 
 Customization
 -------------
