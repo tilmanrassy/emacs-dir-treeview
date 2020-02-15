@@ -524,6 +524,18 @@ more information.")
 (define-error 'dir-treeview-no-parent-dir-error
   "No parent directory" 'treeview-error)
 
+(defun dir-treeview-user-confirm-y-or-n (prompt)
+  "Ask the user for confirmation in the minibuffer.
+PROMPT is the prompt.  It should end with a whitspace.  The input must by \"y\"
+or \"n\", terminated with <RET>.  If the input is something else, the user is
+requested to repeat the input, until the result is \"y\" or \"n\".  The function
+returns non-nil if the final input is \"y\" and nil if the final input is \"n\"."
+  (interactive)
+  (let ( (input (read-string (concat prompt "(y or n) "))) )
+    (while (not (member input '("y" "n")))
+      (setq input (read-string (concat "Please answer y or n - " prompt))))
+    (equal input "y")))
+
 (defun dir-treeview-read-file-name (prompt &optional dir default-filename mustmatch initial predicate)
   "Read a filename, either in the minibuffer or a graphical dialog.
 The arguments PROMPT, DIR, DEFAULT-FILENAME, MUSTMATCH, INITIAL, and PREDICATE
@@ -964,9 +976,9 @@ to the tree, and displayed. Otherwise, the function does nothing."
            (treeview-set-node-name old-node (dir-treeview-local-filename new-absolute-name))
            (treeview-set-node-prop old-node 'absolute-name new-absolute-name)
            (treeview-redisplay-node old-node))
-          ((old-node)
+          (old-node
            (treeview-remove-node old-node))
-          ((new-parent)
+          (new-parent
            (treeview-add-child
             new-parent (dir-treeview-new-node new-absolute-name new-parent) 'dir-treeview-compare-nodes)))))
 
@@ -978,8 +990,8 @@ to the tree, and displayed. Otherwise, the function does nothing."
 
 (defun dir-treeview-redisplay ()
   "Redisplay current buffer, which should be a dir-treeview buffer."
-  (let ( (dir (treeview-get-node-prop dir-treeview-start-node 'absolute-name)) )
-    (setq buffer-read-only nil)
+  (let ( (dir (treeview-get-node-prop dir-treeview-start-node 'absolute-name))
+         (buffer-read-only nil) )
     (erase-buffer)
     (goto-char (point-min))
     (treeview-make-text-overlay dir nil 'dir-treeview-start-dir-face)
@@ -987,7 +999,6 @@ to the tree, and displayed. Otherwise, the function does nothing."
     (newline)
     (dir-treeview-create-parent-link)
     (newline)
-    (setq buffer-read-only t)
     (treeview-display-node dir-treeview-start-node)))
 
 (defun dir-treeview-get-buffers ()
@@ -1244,6 +1255,7 @@ Returns \"*dir-treeview DIR *\" (where DIR is substituted by the value of DIR)."
     (goto-char (point-min))
     (dir-treeview-mode)
     (when dir-treeview-use-file-watch (unless dir-treeview-file-watch-enabled (dir-treeview-switch-on-file-watch)))
+    (setq buffer-read-only t)
     buffer))
 
 ;;;###autoload
@@ -1355,6 +1367,15 @@ with FILENAME as argument."
   (let ( (command (read-shell-command "Command: ")) )
     (dir-treeview-open-with command nil filename)))
 
+(defun dir-treeview-get-directory (location)
+  "Return the directory corresponding to FILENAME.
+If FILENAME is a directory, returns absolute and canonicalized version of
+FILENAME, otherwise the absolute and canonicalized version of its parent.
+The conversion to the absolute and canonicalized version is done by
+`expand-file-name'."
+  (setq location (expand-file-name location))
+  (if (file-directory-p location) location (dir-treeview-parent-filename location)))
+
 (defun dir-treeview-open-terminal (location)
   "Open a terminal at LOCATION.
 LOCATION must be the name of a file or directory.  In case of a directory, the
@@ -1362,12 +1383,12 @@ terminal is opened in that directory.  In case of a non-directory file, the
 terminal is opened in the directory containing the file.  The terminal program
 is specified by the customizable variable `dir-treeview-terminal-program'.
 If the variable is not set, the user is asked to set it now."
-  (setq location (expand-file-name location))
-  (unless (file-directory-p location) (setq location (dir-treeview-parent-filename location)))
+  (setq location (dir-treeview-get-directory location))
   (if (or (not dir-treeview-terminal-program) (string-equal dir-treeview-terminal-program ""))
-      (if (yes-or-no-p (concat "No terminal program specified. "
-                               "You must set the customizable variable 'dir-treeview-terminal-program' first. "
-                               "Set ist now? "))
+      (if (dir-treeview-user-confirm-y-or-n
+           (concat "No terminal program specified. "
+                   "You must set the customizable variable 'dir-treeview-terminal-program' first. "
+                   "Set ist now? "))
           (customize-variable 'dir-treeview-terminal-program))
     (let ( (default-directory location) )
       (call-process dir-treeview-terminal-program nil 0 nil))))
@@ -1379,11 +1400,14 @@ point.  If there is no node at point, does nothing."
   (interactive)
   (dir-treeview-call-for-file-at-point 'dir-treeview-open-terminal))
 
-(defun dir-treeview-open-new-file (dir)
-  "Open a buffer with a new file in directory DIR.
+(defun dir-treeview-open-new-file (location)
+  "Open a buffer with a new file at LOCATION.
 Asks the user to input the name of the file (which must not exist yet), creates
-a buffer for that file, and switches to that buffer."
-  (find-file (dir-treeview-read-new-file-name "New file: " dir)))
+a buffer for that file, and switches to that buffer.  LOCATION must be the name
+of a file or directory.  In case of a directory, the new file is created in
+LOCATION.  In case of a non-directory, the new file is created in the directory
+containing LOCATION.."
+  (find-file (dir-treeview-read-new-file-name "New file: " (dir-treeview-get-directory location))))
 
 (defun dir-treeview-open-new-file-at-point ()
   "Open a buffer with a new file in the directory represented by the node at point.
@@ -1391,7 +1415,7 @@ Calls `dir-treeview-open-new-file' with the absolute filename of the node at
 point.  Signals an error if the filename does not belong to a directory.
 If there is no node at point, does nothing."
   (interactive)
-  (dir-treeview-call-for-file-at-point 'dir-treeview-open-new-file nil t))
+  (dir-treeview-call-for-file-at-point 'dir-treeview-open-new-file))
 
 (defun dir-treeview-copy-file (node)
   "Copy the file corresponding to NODE.
@@ -1405,7 +1429,7 @@ overwriting it."
     (if (file-directory-p new-filename)
         (setq new-filename (concat (file-name-as-directory new-filename) (dir-treeview-local-filename filename))))
     (if (or (not (file-exists-p new-filename))
-            (yes-or-no-p (concat new-filename " exists. Overwrite? ")))
+            (dir-treeview-user-confirm-y-or-n (concat new-filename " exists. Overwrite? ")))
         (let ( (parent-of-new (dir-treeview-find-node-with-absolute-name (dir-treeview-parent-filename new-filename))) )
           (copy-file filename new-filename t)
           (if parent-of-new (dir-treeview-refresh-node parent-of-new)) ))))
@@ -1429,7 +1453,7 @@ overwriting it."
     (if (file-directory-p new-filename)
         (setq new-filename (concat (file-name-as-directory new-filename) (dir-treeview-local-filename filename))))
     (if (or (not (file-exists-p new-filename))
-            (yes-or-no-p (concat new-filename " exists. Overwrite? ")))
+            (dir-treeview-user-confirm-y-or-n (concat new-filename " exists. Overwrite? ")))
         (let ( (parent (treeview-get-node-parent node))
                (parent-of-new (dir-treeview-find-node-with-absolute-name (dir-treeview-parent-filename new-filename))) )
           (rename-file filename new-filename t)
@@ -1441,7 +1465,7 @@ overwriting it."
   "Delete the file corresponding to NODE.
 Asks for confirmation in the minibuffer."
   (let ( (filename (treeview-get-node-prop node 'absolute-name)) )
-    (when (yes-or-no-p (concat "Delete " (dir-treeview-local-filename filename) "? "))
+    (when (dir-treeview-user-confirm-y-or-n (concat "Delete " (dir-treeview-local-filename filename) "? "))
       (delete-file filename)
       (dir-treeview-refresh-node (treeview-get-node-parent node)) )))
 
@@ -1449,7 +1473,7 @@ Asks for confirmation in the minibuffer."
   "Recursively delete the directory corresponding to NODE.
 Asks for confirmation in the minibuffer."
   (let ( (dir (treeview-get-node-prop node 'absolute-name)) )
-    (when (yes-or-no-p (concat "Recursively delete " (dir-treeview-local-filename dir) " and all its contents? "))
+    (when (dir-treeview-user-confirm-y-or-n (concat "Recursively delete " (dir-treeview-local-filename dir) " and all its contents? "))
       (delete-directory dir t)
       (dir-treeview-refresh-node (treeview-get-node-parent node)) )))
 
@@ -1472,7 +1496,7 @@ already, asks for confirmation in the minibuffer before overwriting it."
           (new-dir (expand-file-name (dir-treeview-read-file-name prompt))) )
     (if (file-directory-p new-dir)
         (setq new-dir (concat (file-name-as-directory new-dir) (dir-treeview-local-filename dir))))
-    (if (or (file-exists-p new-dir) (yes-or-no-p (concat new-dir " exists. Overwrite?")))
+    (if (or (file-exists-p new-dir) (dir-treeview-user-confirm-y-or-n (concat new-dir " exists. Overwrite?")))
         (let ( (parent-of-new (dir-treeview-find-node-with-absolute-name (dir-treeview-parent-filename new-dir))) )
           (copy-directory dir new-dir nil t)
           (if parent-of-new (dir-treeview-refresh-node parent-of-new)) ))))
@@ -1622,6 +1646,7 @@ If there is no node at point, does nothing."
     (define-key map (kbd ".") 'dir-treeview-refresh-node-at-point)
     (define-key map (kbd "d") 'dir-treeview-delete-file-or-dir-at-point)
     (define-key map (kbd "t") 'dir-treeview-open-terminal-at-point)
+    (define-key map (kbd "f") 'dir-treeview-open-new-file-at-point)
     (define-key map [menu-bar treeview]
       (cons "Dir-Treeview" (make-sparse-keymap "Dir-Treeview")))
     (define-key map [menu-bar treeview customize]
