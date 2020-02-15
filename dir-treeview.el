@@ -959,15 +959,12 @@ to the tree, and displayed. Otherwise, the function does nothing."
 (defun dir-treeview-remove-node-with-absolute-name (absolute-name)
   (let ( (node (dir-treeview-find-node-with-absolute-name absolute-name)) )
     (when node
-      (dir-treeview-log "remove-node" node)
       (treeview-remove-node node))))
 
 (defun dir-treeview-move-node-by-absolute-name (old-absolute-name new-absolute-name)
   (let* ( (old-node (dir-treeview-find-node-with-absolute-name old-absolute-name))
           (new-parent (dir-treeview-find-node-with-absolute-name (dir-treeview-parent-filename new-absolute-name)))
           (new-node (dir-treeview-find-node-with-absolute-name new-absolute-name)) )
-    (dir-treeview-log "move-node-from" old-node)
-    (dir-treeview-log "move-node-to" new-node)
     (when new-node (treeview-remove-node new-node))
     (cond ((and old-node new-parent)
            (unless (eq (treeview-get-node-parent old-node) new-parent)
@@ -985,7 +982,6 @@ to the tree, and displayed. Otherwise, the function does nothing."
 (defun dir-treeview-redisplay-node-with-absolute-name (absolute-name)
   (let ( (node (dir-treeview-find-node-with-absolute-name absolute-name)) )
     (when node
-      (dir-treeview-log "redisplay-node" node)
       (treeview-redisplay-node node))))
 
 (defun dir-treeview-redisplay ()
@@ -1057,10 +1053,6 @@ are included in the resulting list in this case. "
 See chapter \"File Notifications\" of the GNU Emacs Lisp Reference Manual for
 more information about file watching.")
 
-
-(defun dir-treeview-log (label object)
-  (print (cons label object) (get-buffer-create "*dir-treeview-log*")))
-
 (defun dir-treeview-file-notify-callback (event)
   "Handle file event EVENT.
 This function is used as callback for the file watching service.  The latter
@@ -1068,7 +1060,6 @@ notifies Emacs of file changes outside Emacs.
 
 See chapter \"File Notifications\" of the GNU Emacs Lisp Reference Manual for
 more information."
-  (dir-treeview-log "file-notify" event)
   (let ( (descriptor (nth 0 event))
          (action (nth 1 event))
          (filename (nth 2 event))
