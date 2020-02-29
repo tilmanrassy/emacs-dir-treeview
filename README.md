@@ -28,6 +28,7 @@ Overview
 * Can open terminal in directory
 * Can copy, delete, and move files
 * Works in text mode, too
+* Supports file notifications
 * Highly customizable
 * Themable
 * Ships with one theme called "pleasant" using Font Awesome icons
@@ -175,7 +176,33 @@ Key         | Action
 `<mouse-3>` | Open context menu
 `RET`       | Open file in Emacs
 `m`         | Open context menu
- 
+
+
+File notifications
+------------------
+
+If the operating system provides file watching, dir-treeview can make use of this feature to get notified if a file is
+changed outside Emacs and update the tree accordingly (cf. [Notifications on File Changes](https://www.gnu.org/software/emacs/manual/html_node/elisp/File-Notifications.html#File-Notifications "File-Notifications - GNU Emacs Lisp Manual") in the Emacs Lisp Manual).
+For example, if a new file is created outside Emacs, a corresponding node shows up automatically without the need to
+refresh the tree manually.
+
+File notifications are switched on by default. If you don't like that, change the customizable variable
+`dir-treeview-use-file-watch` to the value `nil`. You do so by typing
+```
+    M-x customize-variable RET dir-treeview-use-file-watch RET
+```
+File notifications can also be switched on and off manually by typing
+
+```
+    M-x dir-treeview-switch-on-file-watch RET
+```
+and
+
+```
+    M-x dir-treeview-switch-off-file-watch RET
+```
+respectively.
+
 
 Customization
 -------------
@@ -185,7 +212,7 @@ Dir-treeview uses [Emacs' Easy Customization](https://www.gnu.org/software/emacs
 ```
     M-x customize-group RET dir-treeview RET
 ```
-in the minibuffer. The customization buffer for dir-treeview opens and a list off settings
+The customization buffer for dir-treeview opens and a list of settings
 is displayed. You can change each setting interactively in the buffer. For example, to change the key bindings of the `[+]`/`[-]` symbols,
 open the "Dir Treeview Control Keymap" entry by clicking on the small triangle left to it. You will see the following:
 
