@@ -527,14 +527,16 @@ more information.")
 (defun dir-treeview-user-confirm-y-or-n (prompt)
   "Ask the user for confirmation in the minibuffer.
 PROMPT is the prompt.  It should end with a whitspace.  The input must by \"y\"
-or \"n\", terminated with <RET>.  If the input is something else, the user is
-requested to repeat the input, until the result is \"y\" or \"n\".  The function
-returns non-nil if the final input is \"y\" and nil if the final input is \"n\"."
+or \"n\".  If the input is something else, the user is requested to repeat the
+input, until the result is \"y\" or \"n\".  No <RET> is required to terminate
+the input.  The input is automatically terminated after the first character,
+more precisely, after the first input event.  The function returns non-nil
+if the (final) input is \"y\" and nil if the final input is \"n\"."
   (interactive)
-  (let ( (input (read-string (concat prompt "(y or n) "))) )
-    (while (not (member input '("y" "n")))
-      (setq input (read-string (concat "Please answer y or n - " prompt))))
-    (equal input "y")))
+  (let ( (input (read-event (concat prompt "(y or n) "))) )
+    (while (not (member input '(?y ?n)))
+      (setq input (read-event (concat "Please answer y or n - " prompt))))
+    (equal input ?y)))
 
 (defun dir-treeview-read-file-name (prompt &optional dir default-filename mustmatch initial predicate)
   "Read a filename, either in the minibuffer or a graphical dialog.
@@ -565,7 +567,7 @@ Otherwise, the directory is read in the minibuffer."
 
 (defun dir-treeview-read-new-file-name (prompt dir)
   "Read a name that is not an existing filename in the directory DIR.
-Prompts with PROMPT. Intended for reading the name of a new file to be created.
+Prompts with PROMPT.  Intended for reading the name of a new file to be created.
 Uses `dir-treeview-read-file-name' internally."
   (setq dir (file-name-as-directory dir))
   (let( (filename (dir-treeview-read-file-name prompt dir "" nil "")) )
@@ -948,7 +950,7 @@ In both cases, NODE is returned."
   "Add a node for ABSOLUTE-NAME to the tree.
 If ABSOLUTE-NAME is a descendant of the root directory of the tree and the tree
 does not already contain a node for ABSOLUTE-NAME, such a node is created, added
-to the tree, and displayed. Otherwise, the function does nothing."
+to the tree, and displayed.  Otherwise, the function does nothing."
   (let ( (abs-parent-name (dir-treeview-parent-filename absolute-name)) parent node )
     (when abs-parent-name
       (setq parent (dir-treeview-find-node-with-absolute-name abs-parent-name))
@@ -957,11 +959,21 @@ to the tree, and displayed. Otherwise, the function does nothing."
         (treeview-add-child parent node 'dir-treeview-compare-nodes)))))
 
 (defun dir-treeview-remove-node-with-absolute-name (absolute-name)
+  "Remove the node with the specified ABSOLUTE-NAME from the tree.
+If there is no such node, does nothing.  The function only acts on the node, the
+respective file is not removed in the file system."
   (let ( (node (dir-treeview-find-node-with-absolute-name absolute-name)) )
     (when node
       (treeview-remove-node node))))
 
 (defun dir-treeview-move-node-by-absolute-name (old-absolute-name new-absolute-name)
+  "Move the node specified by OLD-ABSOLUTE-NAME to NEW-ABSOLUTE-NAME.
+Searches the node with the absolute filename OLD-ABSOLUTE-NAME, removes it from
+the tree, and inserts it again to the tree at the position corresponding to the
+absolute filename NEW-ABSOLUTE-NAME.  If NEW-ABSOLUTE-NAME is outside the tree,
+the node is only removed.  If no node corresponding to OLD-ABSOLUTE-NAME exists,
+the function does nothing.  The function only acts on the node, the respective
+file is not moved in the file system."
   (let* ( (old-node (dir-treeview-find-node-with-absolute-name old-absolute-name))
           (new-parent (dir-treeview-find-node-with-absolute-name (dir-treeview-parent-filename new-absolute-name)))
           (new-node (dir-treeview-find-node-with-absolute-name new-absolute-name)) )
@@ -980,6 +992,8 @@ to the tree, and displayed. Otherwise, the function does nothing."
             new-parent (dir-treeview-new-node new-absolute-name new-parent) 'dir-treeview-compare-nodes)))))
 
 (defun dir-treeview-redisplay-node-with-absolute-name (absolute-name)
+  "Redisplay the node specified by ABSOLUTE-NAME.
+If no such node exists, does nothing."
   (let ( (node (dir-treeview-find-node-with-absolute-name absolute-name)) )
     (when node
       (treeview-redisplay-node node))))
@@ -1028,11 +1042,15 @@ list is empty (i.e., nil), return nil."
     buffer))
 
 (defun dir-treeview-apply-recursively (node callback)
+  "Apply CALLBACK to NODE and all its descendants.
+CALLBACK should be a function expecting a node as argument."
   (funcall callback node)
   (dolist (child (treeview-get-node-children node))
     (dir-treeview-apply-recursively child callback)))
 
 (defun dir-treeview-for-each-node-in-each-buffer (callback)
+  "Apply CALLBACK to each node in each dir-treeview buffer.
+CALLBACK should be a function expecting a node as argument."
     (dolist (buffer (dir-treeview-get-buffers))
       (with-current-buffer buffer
         (dir-treeview-apply-recursively dir-treeview-start-node callback))))
@@ -1041,7 +1059,7 @@ list is empty (i.e., nil), return nil."
   "Return all nodes of all dir-treeview buffers as a list.
 If the optinal argument FILTER is specified, it must be function accepting a
 single node as argument.  Only nodes for which this function returns non-nil
-are included in the resulting list in this case. "
+are included in the resulting list in this case."
   (unless filter (setq filter (lambda (_node) t)))
   (let ( (nodes ()) )
     (dir-treeview-for-each-node-in-each-buffer (lambda (node) (if (funcall filter node) (push node nodes))))
@@ -1108,6 +1126,12 @@ exists, the corresponding file watch descriptor is removed by means of
     (setq dir-treeview-file-watch-alist new-watch-alist)))
         
 (defun dir-treeview-add-to-file-watch-if-applicable (node)
+  "Add the file represented by NODE to the file watch service if appropriate.
+Appropriate means the file is a directory and the state of the node is not
+folded-unread.  File watching only makes sence for such nodes.
+
+See chapter \"File Notifications\" of the GNU Emacs Lisp Reference Manual for
+more information about file watching."
   (when (and (dir-treeview-directory-p node) (not (eq (treeview-get-node-state node) 'folded-unread)))
     (let ( (dirname (treeview-get-node-prop node 'absolute-name)) )
       (unless (assoc dirname dir-treeview-file-watch-alist)
@@ -1149,9 +1173,9 @@ more information about file watching."
       (dir-treeview-switch-off-file-watch)))
 
 (defun dir-treeview-after-node-expanded (node)
-  "Do things that must be done after NODE has been expanded.  This
-function is the implementation of `treeview-after-node-expanded-function' in
-dir-treeview.  Therefore, it is called each time a node is expanded.
+  "Do things that must be done after NODE has been expanded.
+This function is the implementation of `treeview-after-node-expanded-function'
+in dir-treeview.  Therefore, it is called each time a node is expanded.
 Currently,  the function runs only one action, i.e., it calles
 `dir-treeview-add-to-file-watch-if-applicable' provied
 `dir-treeview-file-watch-enabled' is non-nil."
@@ -1298,6 +1322,21 @@ If there is no node at point, does nothing."
   (interactive)
   (treeview-call-for-node-at-point 'dir-treeview-refresh-node))
 
+(defun dir-treeview-refresh-subtree-at-point ()
+  "Update and redisplay the subtree point is in.
+If the node at point is expanded, calls `dir-treeview-refresh-node' for the
+node at point.  If the node at point is not expanded and its parent is not
+nil, calls `dir-treeview-refresh-node' for the parent.  If the node at point
+is not expanded and its parent is nil, calls `dir-treeview-refresh-node' for
+the node at point.  If there is no node at point, does nothing."
+  (interactive)
+  (let ( (node (treeview-get-node-at-pos (point))) )
+    (when node
+      (unless (treeview-node-expanded-p node)
+        (let ( (parent (treeview-get-node-parent node)) )
+          (when parent (setq node parent))))
+      (dir-treeview-refresh-node node))))
+
 (defun dir-treeview-refresh ()
   "Refresh the entire tree."
   (interactive)
@@ -1359,9 +1398,9 @@ with FILENAME as argument."
     (dir-treeview-open-with command nil filename)))
 
 (defun dir-treeview-get-directory (location)
-  "Return the directory corresponding to FILENAME.
-If FILENAME is a directory, returns absolute and canonicalized version of
-FILENAME, otherwise the absolute and canonicalized version of its parent.
+  "Return the directory corresponding to LOCATION.
+If LOCATION is a directory, returns the absolute and canonicalized version
+of LOCATION, otherwise the absolute and canonicalized version of its parent.
 The conversion to the absolute and canonicalized version is done by
 `expand-file-name'."
   (setq location (expand-file-name location))
@@ -1401,7 +1440,7 @@ containing LOCATION.."
   (find-file (dir-treeview-read-new-file-name "New file: " (dir-treeview-get-directory location))))
 
 (defun dir-treeview-open-new-file-at-point ()
-  "Open a buffer with a new file in the directory represented by the node at point.
+  "Open a buffer with a new file in the directory of the node at point.
 Calls `dir-treeview-open-new-file' with the absolute filename of the node at
 point.  Signals an error if the filename does not belong to a directory.
 If there is no node at point, does nothing."
@@ -1634,8 +1673,9 @@ If there is no node at point, does nothing."
     (define-key map "b" 'dir-treeview-toggle-show-backup-files)
     (define-key map (kbd "<down>") 'treeview-next-line)
     (define-key map (kbd "<up>") 'treeview-previous-line)
-    (define-key map (kbd ".") 'dir-treeview-refresh-node-at-point)
+    (define-key map (kbd ".") 'dir-treeview-refresh-subtree-at-point)
     (define-key map (kbd "d") 'dir-treeview-delete-file-or-dir-at-point)
+    (define-key map (kbd "<delete>") 'dir-treeview-delete-file-or-dir-at-point)
     (define-key map (kbd "t") 'dir-treeview-open-terminal-at-point)
     (define-key map (kbd "f") 'dir-treeview-open-new-file-at-point)
     (define-key map [menu-bar treeview]
