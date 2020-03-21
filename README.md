@@ -14,6 +14,7 @@ Emacs file system navigator and simple file manager.
   * [Navigating in the tree, with and without mouse](#navigating-in-the-tree-with-and-without-mouse)
   * [The context menu](#the-context-menu)
   * [Key bindings](#key-bindings)
+* [File notifications](#file-notifications)
 * [Customization](#customization)
   
 
