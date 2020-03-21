@@ -151,6 +151,7 @@ Key         | Action
 `<up>`      | Move to previuos node
 `.`         | Reload node
 `d`         | Delete file or directory
+`DEL`       | Delete file or directory
 `t`         | Open terminal
 `h`         | Toggle show hidden files
 `b`         | Toggle show backup files
