@@ -306,7 +306,7 @@ If `dir-treeview-default-icon' is nil, the node doesn't get an icon."
 This variable is an alist, thus, a list of key-value pairs.  The keys are
 'testers', the values are faces (symbols denoting face names).
 
-Each tester must be either a regular expressions or a Lisp functions.  It
+Each tester must be either a regular expressions or a Lisp function.  It
 decides whether the corresponding face is applied to the filename of a given
 node or not.  If the tester is a regular expression, the face is applied if,
 and only if, the absolute filename of the node matches that regular expression.
