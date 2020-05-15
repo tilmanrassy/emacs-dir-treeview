@@ -763,7 +763,7 @@ icons directly, but as strings containing the hexadecimal character codes."
           (if (dir-treeview-directory-p node)
               (if (treeview-node-folded-p node) dir-treeview-folded-dir-icon dir-treeview-expanded-dir-icon)
             (or (dir-treeview--query-tester-value-list node dir-treeview-special-icons) dir-treeview-default-icon))) )
-    (if (treeview--not-nil-or-empty-string-p char-code) (dir-treeview-char-code-to-symbol char-code))))
+    (if (treeview-not-nil-or-empty-string-p char-code) (dir-treeview-char-code-to-symbol char-code))))
 
 (defun dir-treeview-get-label-margin-left (node)
   "Return the left margin of the label of NODE.
@@ -950,7 +950,8 @@ In both cases, NODE is returned."
   "Add a node for ABSOLUTE-NAME to the tree.
 If ABSOLUTE-NAME is a descendant of the root directory of the tree and the tree
 does not already contain a node for ABSOLUTE-NAME, such a node is created, added
-to the tree, and displayed.  Otherwise, the function does nothing."
+to the tree, and displayed if the node is visible.  Otherwise, the function
+does nothing."
   (let ( (abs-parent-name (dir-treeview-parent-filename absolute-name)) parent node )
     (when abs-parent-name
       (setq parent (dir-treeview-find-node-with-absolute-name abs-parent-name))
@@ -968,28 +969,27 @@ respective file is not removed in the file system."
 
 (defun dir-treeview-move-node-by-absolute-name (old-absolute-name new-absolute-name)
   "Move the node specified by OLD-ABSOLUTE-NAME to NEW-ABSOLUTE-NAME.
-Searches the node with the absolute filename OLD-ABSOLUTE-NAME, removes it from
-the tree, and inserts it again to the tree at the position corresponding to the
-absolute filename NEW-ABSOLUTE-NAME.  If NEW-ABSOLUTE-NAME is outside the tree,
-the node is only removed.  If no node corresponding to OLD-ABSOLUTE-NAME exists,
-the function does nothing.  The function only acts on the node, the respective
-file is not moved in the file system."
+
+Removes the node with the absolute filename OLD-ABSOLUTE-NAME and adds a new
+node with the absolute filename NEW-ABSOLUTE-NAME.
+
+If the node with the absolute filename OLD-ABSOLUTE-NAME does not exist, the
+first step (removing node with absolute filename OLD-ABSOLUTE-NAME) is skipped.
+
+If a node with the absolute filename NEW-ABSOLUTE-NAME already exists, it is
+removed before.
+
+If NEW-ABSOLUTE-NAME is outside the tree, the second step (creating node with
+absolute filename NEW-ABSOLUTE-NAME) is skipped.
+
+The function only acts on the nodes, the respective file is not moved in the
+file system."
   (let* ( (old-node (dir-treeview-find-node-with-absolute-name old-absolute-name))
-          (new-parent (dir-treeview-find-node-with-absolute-name (dir-treeview-parent-filename new-absolute-name)))
-          (new-node (dir-treeview-find-node-with-absolute-name new-absolute-name)) )
+          (new-node (dir-treeview-find-node-with-absolute-name new-absolute-name))
+          (new-parent (when new-node (treeview-get-node-parent new-node))) )
+    (when old-node (treeview-remove-node old-node))
     (when new-node (treeview-remove-node new-node))
-    (cond ((and old-node new-parent)
-           (unless (eq (treeview-get-node-parent old-node) new-parent)
-             (treeview-remove-node old-node)
-             (treeview-add-child new-parent old-node 'dir-treeview-compare-nodes))
-           (treeview-set-node-name old-node (dir-treeview-local-filename new-absolute-name))
-           (treeview-set-node-prop old-node 'absolute-name new-absolute-name)
-           (treeview-redisplay-node old-node))
-          (old-node
-           (treeview-remove-node old-node))
-          (new-parent
-           (treeview-add-child
-            new-parent (dir-treeview-new-node new-absolute-name new-parent) 'dir-treeview-compare-nodes)))))
+    (when new-parent (treeview-add-child new-parent (dir-treeview-new-node new-absolute-name new-parent) 'dir-treeview-compare-nodes)) ))
 
 (defun dir-treeview-redisplay-node-with-absolute-name (absolute-name)
   "Redisplay the node specified by ABSOLUTE-NAME.
@@ -1673,6 +1673,8 @@ If there is no node at point, does nothing."
     (define-key map "b" 'dir-treeview-toggle-show-backup-files)
     (define-key map (kbd "<down>") 'treeview-next-line)
     (define-key map (kbd "<up>") 'treeview-previous-line)
+    (define-key map (kbd "C-<up>") 'treeview-goto-first-sibling)
+    (define-key map (kbd "C-<down>") 'treeview-goto-last-sibling)
     (define-key map (kbd ".") 'dir-treeview-refresh-subtree-at-point)
     (define-key map (kbd "d") 'dir-treeview-delete-file-or-dir-at-point)
     (define-key map (kbd "<delete>") 'dir-treeview-delete-file-or-dir-at-point)
