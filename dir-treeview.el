@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018 Tilman Rassy
 
 ;; Author: Tilman Rassy <tilman.rassy@googlemail.com>
-;; URL: TODO
+;; URL: https://github.com/tilmanrassy/emacs-dir-treeview
 ;; Package-Version: 1.0.0
 ;; Package-Requires: ((treeview "1.0.0"))
 ;; Keywords: tools, convenience, files
@@ -140,7 +140,7 @@ tree has been initialized."
     ("<mouse-3>" . dir-treeview-popup-node-menu-at-mouse)
     ("RET" . treeview-toggle-node-state-at-point)
     ("SPC" . treeview-toggle-node-state-at-point)
-    ("m" . dir-treeview-popup-node-menu-at-point))
+    ("e" . dir-treeview-popup-node-menu-at-point))
   "Keymap of the control symbols.
 A list of assignments of key sequences to commands.  Key sequences are strings
 in a format understood by `kbd'.  Commands a names of Lisp functions."
@@ -152,7 +152,7 @@ in a format understood by `kbd'.  Commands a names of Lisp functions."
     ("<mouse-2>" . dir-treeview-open-file-at-event)
     ("<mouse-3>" . dir-treeview-popup-node-menu-at-mouse)
     ("RET" . dir-treeview-open-file-at-point)
-    ("m" . dir-treeview-popup-node-menu-at-point))
+    ("e" . dir-treeview-popup-node-menu-at-point))
   "Keymap of the labels.
 A list of assignments of key sequences to commands.  Key sequences are strings
 in a format understood by `kbd'.  Commands a names of Lisp functions."
@@ -411,7 +411,17 @@ If file watch is activated, Emacs will be notified about file system changes,
 and update all dir-treeview buffers accordingly.
 
 See chapter \"File Notifications\" of the GNU Emacs Lisp Reference Manual for
-more information.")
+more information."
+  :group 'dir-treeview
+  :type 'boolean)
+
+(defcustom dir-treeview-log-file-notify-events nil
+  "Whether file notification events are logged.
+
+If enabled, each file notification event is logged.
+See `dir-treeview-log-file-notify-event' for more information."
+  :group 'dir-treeview
+  :type 'boolean)
 
 (defface dir-treeview-default-icon-face
   ()
@@ -1078,8 +1088,8 @@ notifies Emacs of file changes outside Emacs.
 
 See chapter \"File Notifications\" of the GNU Emacs Lisp Reference Manual for
 more information."
-  (let ( (descriptor (nth 0 event))
-         (action (nth 1 event))
+  (when dir-treeview-log-file-notify-events (dir-treeview-log-file-notify-event event))
+  (let ( (action (nth 1 event))
          (filename (nth 2 event))
          (filename1 (nth 3 event)) )
     (dolist (buffer (buffer-list))
@@ -1099,6 +1109,25 @@ more information."
                    (dir-treeview-remove-node-with-absolute-name filename)))
                 ((eq action 'attribute-changed)
                  (dir-treeview-redisplay-node-with-absolute-name filename)) ))))))
+
+(defun dir-treeview-log-file-notify-event (event)
+  "Create a log message for the file event EVENT.
+The message is written to the buffer \"*dir-treeview-file-notify-event-log*\".
+It has the following format:
+
+TIMESTAMP -- ACTION FILENAME FILENAME1
+
+TIMESTAMP is the time in human readable form (ISO-like).
+For ACTION, FILENAME, and FILENAME1 see the documentation of file events in the
+GNU Emacs Lisp Reference Manual, chapter \"File Notifications\"."
+  (let ( (action (nth 1 event))
+         (filename (nth 2 event))
+         (filename1 (nth 3 event)) )
+    (with-current-buffer (get-buffer-create "*dir-treeview-file-notify-event-log*")
+      (goto-char (point-max))
+      (unless (eolp) (newline))
+      (insert (format-time-string "%Y-%m-%d %H:%M:%S %3N") (format " -- %s %s %s"  action filename filename1))
+      (newline))))
 
 (defvar dir-treeview-file-watch-alist ()
   "Association list of watched directories and file watch descriptors.
@@ -1452,7 +1481,9 @@ If there is no node at point, does nothing."
 Reads the target in the minibuffer.  If the target is a directory, the file
 is copied to a like-named file in that directory.  If the destination file
 exists already, the function asks for confirmation in the minibuffer before
-overwriting it."
+overwriting it.
+This function is not suitable for directories.  Use `dir-treeview-copy-dir'
+to copy directories."
   (let* ( (filename (treeview-get-node-prop node 'absolute-name))
           (prompt (concat "Copy " (dir-treeview-local-filename filename) " to: "))
           (new-filename (expand-file-name (dir-treeview-read-file-name prompt (file-name-directory filename)))) )
@@ -1464,14 +1495,31 @@ overwriting it."
           (copy-file filename new-filename t)
           (if parent-of-new (dir-treeview-refresh-node parent-of-new)) ))))
 
-(defun dir-treeview-copy-file-at-point ()
-  "Copy the file corresponding to the node at point.
-Calls `dir-treeview-copy-file' with the node at point.  If there is no node at
-point, does nothing."
-  (interactive)
-  (treeview-call-for-node-at-point 'dir-treeview-copy-file))
+(defun dir-treeview-copy-dir (node)
+  "Copy the directory corresponding to NODE.
+Asks for the target directory in the minibuffer.  If the target exists
+already, asks for confirmation in the minibuffer before overwriting it."
+  (let* ( (dir (treeview-get-node-prop node 'absolute-name))
+          (prompt (concat "Copy " (dir-treeview-local-filename dir) " to: "))
+          (new-dir (expand-file-name (dir-treeview-read-file-name prompt))) )
+    (if (file-directory-p new-dir)
+        (setq new-dir (concat (file-name-as-directory new-dir) (dir-treeview-local-filename dir))))
+    (if (or (not (file-exists-p new-dir)) (dir-treeview-user-confirm-y-or-n (concat new-dir " exists. Overwrite? ")))
+        (let ( (parent-of-new (dir-treeview-find-node-with-absolute-name (dir-treeview-parent-filename new-dir))) )
+          (copy-directory dir new-dir nil t)
+          (if parent-of-new (dir-treeview-refresh-node parent-of-new)) ))))
 
-(defun dir-treeview-rename-file-or-dir (node)
+(defun dir-treeview-copy-file-or-dir-at-point ()
+  "Copy the file or directory corresponding to the node at point.
+If there is a node at point, calls `dir-treeview-copy-dir' if the node
+corresponds to a directory, and `dir-treeview-copy-file' if the node
+corresponds to a non-directory.  If there is no node at point, does nothing."
+  (interactive)
+  (let ( (node (treeview-get-node-at-pos (point))) )
+    (when node
+      (if (dir-treeview-directory-p node) (dir-treeview-copy-dir node) (dir-treeview-copy-file node)))))
+
+(defun dir-treeview-rename-file (node)
   "Rename the file or directory corresponding to NODE.
 Reads the target in the minibuffer.  If the target is a directory, the file
 is renamed to a like-named file in that directory.  If the destination file
@@ -1490,10 +1538,19 @@ overwriting it."
           (dir-treeview-refresh-node parent)
           (if (and parent-of-new (not (eq parent parent-of-new)))
               (dir-treeview-refresh-node parent-of-new)) ))))
+
+(defun dir-treeview-rename-file-at-point ()
+  "Rename the file or directory corresponding to the node at point.
+Calls `dir-treeview-rename-file' with the node at point.  If there is no node at
+point, does nothing."
+  (interactive)
+  (treeview-call-for-node-at-point 'dir-treeview-rename-file))
  
 (defun dir-treeview-delete-file (node)
   "Delete the file corresponding to NODE.
-Asks for confirmation in the minibuffer."
+Asks for confirmation in the minibuffer.
+This function is not suitable for directories.  Use `dir-treeview-delete-dir'
+to delete directories."
   (let ( (filename (treeview-get-node-prop node 'absolute-name)) )
     (when (dir-treeview-user-confirm-y-or-n (concat "Delete " (dir-treeview-local-filename filename) "? "))
       (delete-file filename)
@@ -1517,24 +1574,21 @@ corresponds to a non-directory.  If there is no node at point, does nothing."
     (when node
       (if (dir-treeview-directory-p node) (dir-treeview-delete-dir node) (dir-treeview-delete-file node)))))
 
-(defun dir-treeview-copy-dir (node)
-  "Copy the directory corresponding to NODE.
-Asks for the target directory in the minibuffer.  If the target exists
-already, asks for confirmation in the minibuffer before overwriting it."
-  (let* ( (dir (treeview-get-node-prop node 'absolute-name))
-          (prompt (concat "Copy " (dir-treeview-local-filename dir) " to: "))
-          (new-dir (expand-file-name (dir-treeview-read-file-name prompt))) )
-    (if (file-directory-p new-dir)
-        (setq new-dir (concat (file-name-as-directory new-dir) (dir-treeview-local-filename dir))))
-    (if (or (file-exists-p new-dir) (dir-treeview-user-confirm-y-or-n (concat new-dir " exists. Overwrite?")))
-        (let ( (parent-of-new (dir-treeview-find-node-with-absolute-name (dir-treeview-parent-filename new-dir))) )
-          (copy-directory dir new-dir nil t)
-          (if parent-of-new (dir-treeview-refresh-node parent-of-new)) ))))
-
 (defun dir-treeview-create-subdir (node)
   "Create a subdiectory of the directory corresponding to NODE."
   (make-directory (dir-treeview-read-directory-name "New subdirectory: " (treeview-get-node-prop node 'absolute-name)))
   (dir-treeview-refresh-node node))
+
+(defun dir-treeview-create-subdir-at-point ()
+  "Create a subdiectory of the directory corresponding to the node at point.
+If there is a node at point, calls `dir-treeview-create-subdir' if the node
+corresponds to a directory, and signals an error if the node corresponds to
+a non-directory.  If there is no node at point, does nothing."
+  (interactive)
+  (let ( (node (treeview-get-node-at-pos (point))) )
+    (when node
+      (unless (dir-treeview-directory-p node) (user-error "Node at point is not a directory"))
+      (dir-treeview-create-subdir node))))
 
 (defun dir-treeview-get-open-with-menu (node)
   "Create and return the 'Open with ...' submenu of the popup menu of NODE.
@@ -1584,7 +1638,7 @@ This is the default implementation of the customizable variable
               (vector "Create Subdir" (list 'dir-treeview-create-subdir (list 'quote node)))
               "--"
               (vector "Copy" (list 'dir-treeview-copy-dir (list 'quote node)))
-              (vector "Rename" (list 'dir-treeview-rename-file-or-dir (list 'quote node)))
+              (vector "Rename" (list 'dir-treeview-rename-file (list 'quote node)))
               (vector "Delete" (list 'dir-treeview-delete-dir (list 'quote node))))
       (if (funcall dir-treeview-is-openable-in-editor-p-function absolute-name)
           (list local-name
@@ -1601,7 +1655,7 @@ This is the default implementation of the customizable variable
                 (vector "Open Terminal" (list 'dir-treeview-open-terminal absolute-name))
                 "--"
                 (vector "Copy" (list 'dir-treeview-copy-file (list 'quote node)))
-                (vector "Rename" (list 'dir-treeview-rename-file-or-dir (list 'quote node)))
+                (vector "Rename" (list 'dir-treeview-rename-file (list 'quote node)))
                 (vector "Delete" (list 'dir-treeview-delete-file (list 'quote node))))
         (list local-name
               (dir-treeview-get-open-with-menu node)
@@ -1609,7 +1663,7 @@ This is the default implementation of the customizable variable
               (vector "Open Terminal" (list 'dir-treeview-open-terminal absolute-name))
               "--"
               (vector "Copy" (list 'dir-treeview-copy-file absolute-name))
-              (vector "Rename" (list 'dir-treeview-rename-file-or-dir absolute-name))
+              (vector "Rename" (list 'dir-treeview-rename-file absolute-name))
               (vector "Delete" (list 'dir-treeview-delete-file absolute-name))) ))))
 
 (defun dir-treeview-get-node-menu (node)
@@ -1678,8 +1732,11 @@ If there is no node at point, does nothing."
     (define-key map (kbd ".") 'dir-treeview-refresh-subtree-at-point)
     (define-key map (kbd "d") 'dir-treeview-delete-file-or-dir-at-point)
     (define-key map (kbd "<delete>") 'dir-treeview-delete-file-or-dir-at-point)
+    (define-key map (kbd "c") 'dir-treeview-copy-file-or-dir-at-point)
+    (define-key map (kbd "r") 'dir-treeview-rename-file-at-point)
     (define-key map (kbd "t") 'dir-treeview-open-terminal-at-point)
     (define-key map (kbd "f") 'dir-treeview-open-new-file-at-point)
+    (define-key map (kbd "s") 'dir-treeview-create-subdir-at-point)
     (define-key map [menu-bar treeview]
       (cons "Dir-Treeview" (make-sparse-keymap "Dir-Treeview")))
     (define-key map [menu-bar treeview customize]
