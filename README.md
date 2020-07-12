@@ -123,7 +123,7 @@ It is possible to navigate in the tree completely without the mouse, only with t
 
 ### The context menu
 
-A right-click on an node opens the nodes's context menu. Alternativly, the context menu can be opened with the `m` key when the point is on a node. The menu looks different depending on whether the node is a directory or not:
+A right-click on an node opens the nodes's context menu. Alternativly, the context menu can be opened with the `e` key when the point is on a node. The menu looks different depending on whether the node is a directory or not:
 
 #### Non-directory-file:
 ![Context menu for non-directory files](screenshots/050_context_menu_non_directory.png "Context menu for non-directory files")
@@ -150,10 +150,16 @@ Key         | Action
 ------------|-------------------------
 `<down>`    | Move to next node
 `<up>`      | Move to previuos node
+`C-<down>`  | Move to last sibling
+`C-<up>`    | Move to first sibling
 `.`         | Reload node
 `d`         | Delete file or directory
 `DEL`       | Delete file or directory
+`c`         | Copy file or directory
+`r`         | Rename file or directory
 `t`         | Open terminal
+`f`         | New file
+`s`         | New directory
 `h`         | Toggle show hidden files
 `b`         | Toggle show backup files
 
@@ -167,7 +173,7 @@ Key         | Action
 `<mouse-3>` | Open context menu
 `RET`       | Expand/collapse node
 `SPC`       | Expand/collapse node
-`m`         | Open context menu
+`e`         | Open context menu
 
 #### Label keymap
 
@@ -177,7 +183,7 @@ Key         | Action
 `<mouse-2>` | Open file in Emacs
 `<mouse-3>` | Open context menu
 `RET`       | Open file in Emacs
-`m`         | Open context menu
+`e`         | Open context menu
 
 
 File notifications
