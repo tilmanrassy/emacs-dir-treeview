@@ -1,10 +1,10 @@
 ;;; dir-treeview.el --- A directory tree browser and simple file manager -*- lexical-binding: t -*-
 
-;; Copyright (C) 2018 Tilman Rassy
+;; Copyright (C) 2018-2020 Tilman Rassy
 
 ;; Author: Tilman Rassy <tilman.rassy@googlemail.com>
 ;; URL: https://github.com/tilmanrassy/emacs-dir-treeview
-;; Package-Version: 1.0.0
+;; Version: 1.0.0
 ;; Package-Requires: ((treeview "1.0.0"))
 ;; Keywords: tools, convenience, files
 
@@ -23,10 +23,17 @@
 
 ;;; Commentary:
 
-;; Provides a tree navigation for the file system, similar to common file
-;; managers.  Directories can be folded and unfolded.  A left mouse click on a
-;; file opens it in Emacs.  A right mouse click opens a context menu with
-;; further options.
+;; Displays the file system as a tree; subtrees can be folded and unfolded
+;; A click on a filename loads the file in Emacs
+;; A right-click opens a context menu with further actions
+;; Can open files by external programs or Lisp functions
+;; Can open terminal in directory
+;; Can copy, delete, and move files
+;; Works in text mode, too
+;; Supports file notifications
+;; Highly customizable
+;; Themable
+;; Ships with one theme called "pleasant" using Font Awesome icons
 
 ;;; Code:
 
