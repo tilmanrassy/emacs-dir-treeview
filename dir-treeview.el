@@ -1012,7 +1012,7 @@ file system."
   "Redisplay the node specified by ABSOLUTE-NAME.
 If no such node exists, does nothing."
   (let ( (node (dir-treeview-find-node-with-absolute-name absolute-name)) )
-    (when node
+    (when (and node (treeview-node-not-hidden-p node))
       (treeview-redisplay-node node))))
 
 (defun dir-treeview-redisplay ()
