@@ -1332,7 +1332,7 @@ If there exists no such buffer, create one and switch to it."
 
 ;;;###autoload
 (defun dir-treeview ()
-  "Display the directody tree for `dir-treeview-default-root'.
+  "Display the directory tree for `dir-treeview-default-root'.
 
 If there exists a dir-treeview buffer for that directory, switch to the first
 such buffer found in the list of dir treeview buffers.
@@ -1500,7 +1500,9 @@ to copy directories."
             (dir-treeview-user-confirm-y-or-n (concat new-filename " exists. Overwrite? ")))
         (let ( (parent-of-new (dir-treeview-find-node-with-absolute-name (dir-treeview-parent-filename new-filename))) )
           (copy-file filename new-filename t)
-          (if parent-of-new (dir-treeview-refresh-node parent-of-new)) ))))
+          (if parent-of-new
+              ;; If file watch is enabled, we let its callback function do the refreshing
+              (unless dir-treeview-file-watch-enabled (dir-treeview-refresh-node parent-of-new))) ))))
 
 (defun dir-treeview-copy-dir (node)
   "Copy the directory corresponding to NODE.
@@ -1514,7 +1516,9 @@ already, asks for confirmation in the minibuffer before overwriting it."
     (if (or (not (file-exists-p new-dir)) (dir-treeview-user-confirm-y-or-n (concat new-dir " exists. Overwrite? ")))
         (let ( (parent-of-new (dir-treeview-find-node-with-absolute-name (dir-treeview-parent-filename new-dir))) )
           (copy-directory dir new-dir nil t)
-          (if parent-of-new (dir-treeview-refresh-node parent-of-new)) ))))
+          (if parent-of-new
+              ;; If file watch is enabled, we let its callback function do the refreshing
+              (unless dir-treeview-file-watch-enabled (dir-treeview-refresh-node parent-of-new))) ))))
 
 (defun dir-treeview-copy-file-or-dir-at-point ()
   "Copy the file or directory corresponding to the node at point.
@@ -1542,9 +1546,11 @@ overwriting it."
         (let ( (parent (treeview-get-node-parent node))
                (parent-of-new (dir-treeview-find-node-with-absolute-name (dir-treeview-parent-filename new-filename))) )
           (rename-file filename new-filename t)
-          (dir-treeview-refresh-node parent)
-          (if (and parent-of-new (not (eq parent parent-of-new)))
-              (dir-treeview-refresh-node parent-of-new)) ))))
+          ;; If file watch is enabled, we let its callback function do the refreshing
+          (unless dir-treeview-file-watch-enabled
+            (dir-treeview-refresh-node parent)
+            (if (and parent-of-new (not (eq parent parent-of-new)))
+                (dir-treeview-refresh-node parent-of-new))) ))))
 
 (defun dir-treeview-rename-file-at-point ()
   "Rename the file or directory corresponding to the node at point.
@@ -1561,7 +1567,8 @@ to delete directories."
   (let ( (filename (treeview-get-node-prop node 'absolute-name)) )
     (when (dir-treeview-user-confirm-y-or-n (concat "Delete " (dir-treeview-local-filename filename) "? "))
       (delete-file filename)
-      (dir-treeview-refresh-node (treeview-get-node-parent node)) )))
+      ;; If file watch is enabled, we let its callback function do the refreshing
+      (unless dir-treeview-file-watch-enabled (dir-treeview-refresh-node (treeview-get-node-parent node))) )))
 
 (defun dir-treeview-delete-dir (node)
   "Recursively delete the directory corresponding to NODE.
@@ -1569,7 +1576,8 @@ Asks for confirmation in the minibuffer."
   (let ( (dir (treeview-get-node-prop node 'absolute-name)) )
     (when (dir-treeview-user-confirm-y-or-n (concat "Recursively delete " (dir-treeview-local-filename dir) " and all its contents? "))
       (delete-directory dir t)
-      (dir-treeview-refresh-node (treeview-get-node-parent node)) )))
+      ;; If file watch is enabled, we let its callback function do the refreshing
+      (unless dir-treeview-file-watch-enabled (dir-treeview-refresh-node (treeview-get-node-parent node))) )))
 
 (defun dir-treeview-delete-file-or-dir-at-point ()
   "Delete the file or directory corresponding to the node at point.
@@ -1584,7 +1592,8 @@ corresponds to a non-directory.  If there is no node at point, does nothing."
 (defun dir-treeview-create-subdir (node)
   "Create a subdiectory of the directory corresponding to NODE."
   (make-directory (dir-treeview-read-directory-name "New subdirectory: " (treeview-get-node-prop node 'absolute-name)))
-  (dir-treeview-refresh-node node))
+  ;; If file watch is enabled, we let its callback function do the refreshing
+  (unless dir-treeview-file-watch-enabled (dir-treeview-refresh-node node)))
 
 (defun dir-treeview-create-subdir-at-point ()
   "Create a subdiectory of the directory corresponding to the node at point.
