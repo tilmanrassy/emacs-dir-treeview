@@ -153,6 +153,7 @@ Key         | Action
 `C-<down>`  | Move to last sibling
 `C-<up>`    | Move to first sibling
 `.`         | Reload node
+`=`         | Reload entire tree
 `d`         | Delete file or directory
 `DEL`       | Delete file or directory
 `c`         | Copy file or directory

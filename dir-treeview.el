@@ -1351,6 +1351,11 @@ redisplayed by calling `treeview-redisplay-node'."
     (treeview-redisplay-node node)
     (goto-char (if (<= pos (point-max)) (if (>= pos (point-min)) pos (point-min)) (point-max))) ))
 
+(defun dir-treeview-refresh-tree ()
+  "Update and redisplay the entire tree."
+  (interactive)
+  (dir-treeview-refresh-node dir-treeview-start-node))
+
 (defun dir-treeview-refresh-node-at-point ()
   "Update and redisplay the node at point.
 Calls `dir-treeview-refresh-node' with the node at point.
@@ -1746,6 +1751,7 @@ If there is no node at point, does nothing."
     (define-key map (kbd "C-<up>") 'treeview-goto-first-sibling)
     (define-key map (kbd "C-<down>") 'treeview-goto-last-sibling)
     (define-key map (kbd ".") 'dir-treeview-refresh-subtree-at-point)
+    (define-key map (kbd "=") 'dir-treeview-refresh-tree)
     (define-key map (kbd "d") 'dir-treeview-delete-file-or-dir-at-point)
     (define-key map (kbd "<delete>") 'dir-treeview-delete-file-or-dir-at-point)
     (define-key map (kbd "c") 'dir-treeview-copy-file-or-dir-at-point)
