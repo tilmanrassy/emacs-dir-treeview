@@ -16,6 +16,7 @@ Emacs file system navigator and simple file manager.
   * [Key bindings](#key-bindings)
 * [File notifications](#file-notifications)
 * [Customization](#customization)
+* [Troubleshooting](#troubleshooting)
   
 
 
@@ -228,4 +229,12 @@ open the "Dir Treeview Control Keymap" entry by clicking on the small triangle l
 ![Customization buffer](screenshots/070_customization.png "Customization buffer")
 
 You can now add or remove keys or change the Lisp commands bound the them.
+
+
+Troubleshooting
+---------------
+
+If the tree seems to be incorrect, outdated or broken, hit the `=` key. This runs the command `dir-treeview-refresh-tree`, which recreates the
+whole tree and (hopefully) fixes the problems.
+
 
