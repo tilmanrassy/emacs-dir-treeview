@@ -1148,7 +1148,7 @@ occurring as nodes in any dir-treeview buffer.  For each node for which no node
 exists, the corresponding file watch descriptor is removed by means of
 `file-notify-rm-watch', and the corresponding entry in the alist
 `dir-treeview-file-watch-alist' is removed."
-  (let ( dirnames new-watch-alist )
+  (let ( dirnames new-watch-alist item )
     ;; Get paths of all directory nodes and store them in 'dirnames':
     (dolist (node (dir-treeview-get-nodes-in-each-buffer 'dir-treeview-directory-p))
       (let ( (dirname (treeview-get-node-prop node 'absolute-name)) )
