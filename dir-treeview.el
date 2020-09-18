@@ -5,7 +5,7 @@
 ;; Author: Tilman Rassy <tilman.rassy@googlemail.com>
 ;; URL: https://github.com/tilmanrassy/emacs-dir-treeview
 ;; Version: 1.0.0
-;; Package-Requires: ((treeview "1.0.0"))
+;; Package-Requires: ((emacs "24.4") (treeview "1.0.0"))
 ;; Keywords: tools, convenience, files
 
 ;; This program is free software; you can redistribute it and/or modify
