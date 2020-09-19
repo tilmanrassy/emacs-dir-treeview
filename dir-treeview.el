@@ -415,7 +415,7 @@ a menu-specifying object as described in the GNU Emacs Lisp Reference Manual."
   "Whether file watch is switched on automatically.
 
 If file watch is activated, Emacs will be notified about file system changes,
-and update all dir-treeview buffers accordingly.
+and update all Dir Treeview buffers accordingly.
 
 See chapter \"File Notifications\" of the GNU Emacs Lisp Reference Manual for
 more information."
@@ -715,7 +715,7 @@ CHILDREN:      The children of the new node.  Should be a list of nodes.
 (defun dir-treeview-node-leaf-p (node)
   "Return non-nil if NODE is a leaf node.
 This function is the implementation of `treeview-node-leaf-p-function' in
-dir-treeview.  It returns non-nil if, and only if, NODE represends a file which
+Dir Treeview.  It returns non-nil if, and only if, NODE represends a file which
 is not a directory.  Note that this function considers empty directories
 not as leaf nodes."
   (not (file-directory-p (treeview-get-node-prop node 'absolute-name))))
@@ -784,7 +784,7 @@ icons directly, but as strings containing the hexadecimal character codes."
 
 (defun dir-treeview-get-label-margin-left (node)
   "Return the left margin of the label of NODE.
-This function is the dir-treeview implementation of
+This function is the Dir Treeview implementation of
 `treeview-get-label-margin-left-function'.  It returns
 `dir-treeview-file-label-margin-left' if NODE is a leaf node according to
 `dir-treeview-node-leaf-p', otherwise it returns `dir-treeview-dir-label-margin-left'."
@@ -793,7 +793,7 @@ This function is the dir-treeview implementation of
  
 (defun dir-treeview-get-label (node)
   "Return the string suitable as the label of NODE.
-This function is the dir-treeview implementation of
+This function is the Dir Treeview implementation of
 `treeview-get-label-function'.  It simply retuns the name of NODE."
   (treeview-get-node-name node))
 
@@ -1016,7 +1016,7 @@ If no such node exists, does nothing."
       (treeview-redisplay-node node))))
 
 (defun dir-treeview-redisplay ()
-  "Redisplay current buffer, which should be a dir-treeview buffer."
+  "Redisplay current buffer, which should be a Dir Treeview buffer."
   (let ( (dir (treeview-get-node-prop dir-treeview-start-node 'absolute-name))
          (buffer-read-only nil) )
     (erase-buffer)
@@ -1029,7 +1029,7 @@ If no such node exists, does nothing."
     (treeview-display-node dir-treeview-start-node)))
 
 (defun dir-treeview-get-buffers ()
-  "Return a list of all dir-treeview buffers."
+  "Return a list of all Dir Treeview buffers."
   (let ( (dir-treeview-buffers ()) )
     (dolist (buffer (buffer-list))
       (with-current-buffer buffer
@@ -1038,10 +1038,10 @@ If no such node exists, does nothing."
     dir-treeview-buffers))
 
 (defun dir-treeview-get-buffer (&optional dir)
-  "Find and return the dir-treeview buffer with DIR as root directory.
-If DIR is non-nil and there exists a dir-treeview buffer for the directory DIR,
-return the first such buffer found in the list of dir-treeview buffers.  If DIR
-is nil, return the first buffer in the list of dir-treeview buffers, or, if the
+  "Find and return the Dir Treeview buffer with DIR as root directory.
+If DIR is non-nil and there exists a Dir Treeview buffer for the directory DIR,
+return the first such buffer found in the list of Dir Treeview buffers.  If DIR
+is nil, return the first buffer in the list of Dir Treeview buffers, or, if the
 list is empty (i.e., nil), return nil."
   (let ( (dir-treeview-buffers (dir-treeview-get-buffers))
          (buffer nil) )
@@ -1066,14 +1066,14 @@ CALLBACK should be a function expecting a node as argument."
     (dir-treeview-apply-recursively child callback)))
 
 (defun dir-treeview-for-each-node-in-each-buffer (callback)
-  "Apply CALLBACK to each node in each dir-treeview buffer.
+  "Apply CALLBACK to each node in each Dir Treeview buffer.
 CALLBACK should be a function expecting a node as argument."
     (dolist (buffer (dir-treeview-get-buffers))
       (with-current-buffer buffer
         (dir-treeview-apply-recursively dir-treeview-start-node callback))))
 
 (defun dir-treeview-get-nodes-in-each-buffer (&optional filter)
-  "Return all nodes of all dir-treeview buffers as a list.
+  "Return all nodes of all Dir Treeview buffers as a list.
 If the optinal argument FILTER is specified, it must be function accepting a
 single node as argument.  Only nodes for which this function returns non-nil
 are included in the resulting list in this case."
@@ -1142,9 +1142,9 @@ The keys are the absolute paths of the directories, the values the corresponding
 file watch descriptors as returned by `file-notify-add-watch'.")
 
 (defun dir-treeview-remove-unused-file-watches ()
-  "Remove file watches not referring to any node in any dir-treeview buffer.
+  "Remove file watches not referring to any node in any Dir Treeview buffer.
 Compares the directories in `dir-treeview-file-watch-alist' with the directories
-occurring as nodes in any dir-treeview buffer.  For each node for which no node
+occurring as nodes in any Dir Treeview buffer.  For each node for which no node
 exists, the corresponding file watch descriptor is removed by means of
 `file-notify-rm-watch', and the corresponding entry in the alist
 `dir-treeview-file-watch-alist' is removed."
@@ -1196,10 +1196,10 @@ more information about file watching."
    (lambda (node) (dir-treeview-add-to-file-watch-if-applicable node))))
 
 (defun dir-treeview-shutdown-file-watch-if-last-buffer ()
-  "Turn off file watch if the current buffer is the only dir-treeview buffer.
+  "Turn off file watch if the current buffer is the only Dir Treeview buffer.
 
 This function is called by `kill-buffer-hook' to shut down the file watch
-service if the last dir-treeview buffer is about to be closed.
+service if the last Dir Treeview buffer is about to be closed.
 
 See chapter \"File Notifications\" of the GNU Emacs Lisp Reference Manual for
 more information about file watching."
@@ -1211,7 +1211,7 @@ more information about file watching."
 (defun dir-treeview-after-node-expanded (node)
   "Do things that must be done after NODE has been expanded.
 This function is the implementation of `treeview-after-node-expanded-function'
-in dir-treeview.  Therefore, it is called each time a node is expanded.
+in Dir Treeview.  Therefore, it is called each time a node is expanded.
 Currently,  the function runs only one action, i.e., it calles
 `dir-treeview-add-to-file-watch-if-applicable' provied
 `dir-treeview-file-watch-enabled' is non-nil."
@@ -1240,7 +1240,7 @@ value of LABEL.  The Tooltip text of the entry is HELP-TEXT."
         'help-echo (concat help-text " (y : yes, n: no)")))
 
 (defun dir-treeview-create-mode-line-format ()
-  "Create the mode line format for dir-treeview buffers."
+  "Create the mode line format for Dir Treeview buffers."
   (list " "
         '(:propertize "%20b" face mode-line-buffer-id)
         " "
@@ -1255,7 +1255,7 @@ value of LABEL.  The Tooltip text of the entry is HELP-TEXT."
                                                "Whether backup files are shown") ))
 
 (defun dir-treeview-mode ()
-  "Major mode for dir-treeview buffers.
+  "Major mode for Dir Treeview buffers.
 
 Dir-Treeview provides a tree navigation for the file system, similar to
 common file managers.  You can browse the directory structure, open files in
@@ -1271,12 +1271,12 @@ directories, and open terminals in directories."
 (put 'dir-treeview-mode 'mode-class 'special)
 
 (defun dir-treeview-buffer-name (dir)
-  "Return the name of a dir-treeview buffer with DIR as root directory.
+  "Return the name of a Dir Treeview buffer with DIR as root directory.
 Returns \"*dir-treeview DIR *\" (where DIR is substituted by the value of DIR)."
   (concat "*dir-treeview " dir "*"))
 
 (defun dir-treeview-create-buffer (dir)
-  "Create a dir-treeview buffer with DIR as root directory."
+  "Create a Dir Treeview buffer with DIR as root directory."
   (setq dir (expand-file-name dir))
   (let ( (buffer (generate-new-buffer (dir-treeview-buffer-name dir))) )
     (set-buffer buffer)
@@ -1315,8 +1315,8 @@ Returns \"*dir-treeview DIR *\" (where DIR is substituted by the value of DIR)."
 If omitted or nil, read DIR in the minibuffer, with `dir-treeview-default-root'
 as preset value.
 
-If there exists a dir-treeview buffer for the directory DIR, switch to the first
-such buffer found in the list of dir dir-treeview buffers.
+If there exists a Dir Treeview buffer for the directory DIR, switch to the first
+such buffer found in the list of dir Dir Treeview buffers.
 
 If there exists no such buffer, create one and switch to it."
   (interactive)
@@ -1334,7 +1334,7 @@ If there exists no such buffer, create one and switch to it."
 (defun dir-treeview ()
   "Display the directory tree for `dir-treeview-default-root'.
 
-If there exists a dir-treeview buffer for that directory, switch to the first
+If there exists a Dir Treeview buffer for that directory, switch to the first
 such buffer found in the list of dir treeview buffers.
 
 If there exists no such buffer, create one and switch to it."
@@ -1710,7 +1710,7 @@ If there is no node at point, does nothing."
     (if node (popup-menu (dir-treeview-get-node-menu node) (posn-at-point)))))
 
 (defun dir-treeview-save-menu-options ()
-  "Save the dir-treeview options that can be set in the menu."
+  "Save the Dir Treeview options that can be set in the menu."
   (interactive)
   (let ( (variables '(dir-treeview-show-hidden-files
                       dir-treeview-show-backup-files)) )
@@ -1742,7 +1742,7 @@ If there is no node at point, does nothing."
   (customize-group 'dir-treeview))
 
 (defun dir-treeview-create-local-keymap ()
-  "Create and return the local keymap for dir-treeview buffers."
+  "Create and return the local keymap for Dir Treeview buffers."
   (let ( (map (make-keymap)) )
     (define-key map "h" 'dir-treeview-toggle-show-hidden-files)
     (define-key map "b" 'dir-treeview-toggle-show-backup-files)
