@@ -22,7 +22,7 @@
 ;; must be installed on your computer, and must be accessible under the font
 ;; familiy name "Font Awesome".
 ;;
-;; The theme is suitable for graphical displays only. Thus, on text displays all
+;; The theme is suitable for graphical displays only.  Thus, on text displays all
 ;; settings of the theme are ignored, and the theme has no effect.
 
 ;;; Code:
