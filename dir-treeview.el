@@ -1049,12 +1049,11 @@ list is empty (i.e., nil), return nil."
         (let ( (absolute-name (expand-file-name dir)) )
           (save-excursion
             (while (and (not buffer) dir-treeview-buffers)
-              (progn
-                (set-buffer (car dir-treeview-buffers))
-                (if (equal (treeview-get-node-prop dir-treeview-start-node 'absolute-name)
-                           absolute-name)
-                    (setq buffer (current-buffer)))
-                (setq dir-treeview-buffers (cdr dir-treeview-buffers))))))
+              (set-buffer (car dir-treeview-buffers))
+              (if (equal (treeview-get-node-prop dir-treeview-start-node 'absolute-name)
+                         absolute-name)
+                  (setq buffer (current-buffer)))
+              (setq dir-treeview-buffers (cdr dir-treeview-buffers)))))
       (if dir-treeview-buffers (setq buffer (car dir-treeview-buffers))) )
     buffer))
 
@@ -1429,7 +1428,7 @@ COMMAND is the filename of the program.  It is called with PARAMS and FILENAME
 as arguments (in that order).  PARAMS should be a (possibly empty) list of
 strings.."
   (setq params (append params (list filename)))
-  (apply 'call-process command nil 0 nil params))
+  (apply #'call-process command nil 0 nil params))
 
 (defun dir-treeview-open-with-other (filename)
   "Open FILENAME with an external program read in the minibuffer.
