@@ -13,7 +13,7 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 
@@ -67,5 +67,6 @@
   (add-to-list 'custom-theme-load-path (file-name-as-directory (file-name-directory load-file-name))))
 
 (provide-theme 'dir-treeview-pleasant)
+(provide 'dir-treeview-pleasant-theme)
 
 ;;; dir-treeview-pleasant-theme.el ends here
