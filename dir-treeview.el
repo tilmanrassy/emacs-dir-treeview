@@ -19,7 +19,7 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 
@@ -38,6 +38,7 @@
 ;;; Code:
 
 (require 'treeview)
+(require 'filenotify)
 
 (defgroup dir-treeview nil
   "Customizaton group for dir-treeview."
@@ -249,7 +250,7 @@ corresponding file is regarded as a text file, otherwise as a binary file."
   :type 'function)
 
 (defcustom dir-treeview-is-openable-in-editor-p-function
-  '(lambda (filename) t)
+  (lambda (_filename) t)
   "Function to recommend whether a file can be opened in EXmacs or not."
   :tag "Dir-Treeview Is-Openable-In-Editor Predicate Function"
   :group 'dir-treeview
@@ -591,7 +592,7 @@ Uses `dir-treeview-read-file-name' internally."
     (setq filename (expand-file-name filename dir))
     (when (file-exists-p filename)
       (user-error "File \"%s\" already exists" filename))
-    (when (not (equal (file-name-directory filename) dir))
+    (unless (equal (file-name-directory filename) dir)
       (user-error "Path \"%s\" doesn't denote a file in this directory" filename))
     filename))
 
@@ -1786,7 +1787,7 @@ If there is no node at point, does nothing."
         :help "Toggle whether hidden files are shown or not"))
     map))
 
-(add-hook 'kill-buffer-hook 'dir-treeview-shutdown-file-watch-if-last-buffer)
+(add-hook 'kill-buffer-hook #'dir-treeview-shutdown-file-watch-if-last-buffer)
 
 (provide 'dir-treeview)
 
