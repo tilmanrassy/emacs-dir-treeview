@@ -1004,7 +1004,8 @@ The function only acts on the nodes, the respective file is not moved in the
 file system."
   (let* ( (old-node (dir-treeview-find-node-with-absolute-name old-absolute-name))
           (new-node (dir-treeview-find-node-with-absolute-name new-absolute-name))
-          (new-parent (when new-node (treeview-get-node-parent new-node))) )
+          (new-parent-absolut-name (dir-treeview-parent-filename new-absolute-name))
+          (new-parent (when new-parent-absolut-name (dir-treeview-find-node-with-absolute-name new-parent-absolut-name))) )
     (when old-node (treeview-remove-node old-node))
     (when new-node (treeview-remove-node new-node))
     (when new-parent (treeview-add-child new-parent (dir-treeview-new-node new-absolute-name new-parent) 'dir-treeview-compare-nodes)) ))
