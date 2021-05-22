@@ -6,8 +6,10 @@ Emacs file system navigator and simple file manager.
 * [Overview](#overview)
 * [Screenshots](#screenshots)
 * [Installation](#installation)
-  * [Installation of dir-treeview](#installation-of-dir-treeview)
-  * [Installation of the "pleasant" theme](#installation-of-the-pleasant-theme)
+  * [From MELPA](#from-melpa)
+  * [Manual installation](#manual-installation)
+  * [Post-installation setup](#post-installation-setup)
+  * [Setup of the "pleasant" theme](#setup-of-the-pleasant-theme)
 * [Usage](#usage)
   * [Start](#start)
   * [Current vs. side window](#current-vs-side-window)
@@ -55,9 +57,18 @@ Screenshots
 Installation
 ------------
 
-As a prerequisite, install [emacs-treeview](https://github.com/tilmanrassy/emacs-treeview).
+### From MELPA
 
-### Installation of dir-treeview
+Dir-treeview is available on [MELPA](https://melpa.org/). Provided MELPA is configured in your Emacs
+(see [here](https://melpa.org/#/getting-started) for more information), you can install dir-treeview by typing:
+
+```
+    M-x package-install RET dir-treeview RET
+```
+
+### Manual installation
+
+As a prerequisite, install [emacs-treeview](https://github.com/tilmanrassy/emacs-treeview).
 
 Copy the file dir-treeview.el to somewhere in the load path. Optionally, byte-compile the
 file. Add the following to your `init.el`:
@@ -66,24 +77,35 @@ file. Add the following to your `init.el`:
     (require 'dir-treeview)
 ```
 
+### Post-installation setup
+
 Bind a key, for example F9, to the command `dir-treeview` by adding the following
-to your `init.el` (somewhere after the `require` statement above):
+to your `init.el`:
 
 ```elisp
     (global-set-key (kbd "<f9>") 'dir-treeview)
 ```
 
-### Installation of the "pleasant" theme
+If you installed dir-treeview manually, this statement must occur after the `(require 'dir-treeview)` statement above.
 
-Make sure the "Font Awesome" icon font is installed on your computer. Copy the file `dir-treeview-pleasant-theme.el`
-to somewhere in the theme loadpath (cf. Lisp variable `custom-theme-load-path`, see
-[Custom Themes](https://www.gnu.org/software/emacs/manual/html_node/emacs/Custom-Themes.html#Custom-Themes "Custom Themes - GNU Emacs Manual")
-in the Emacs Manual).
-Add the following to your `init.el` (somewhere after the `require` statement above):
+### Setup of the "pleasant" theme
+
+Make sure the "Font Awesome" icon font is installed on your computer.
+
+If you installed dir-treeview manually, copy the file `dir-treeview-pleasant-theme.el` either to somewhere in the theme load path
+(cf. Lisp variable `custom-theme-load-path`) or to somewhere in the usual load path (cf. Lisp variable `load-path`).
+
+Add the following to your `init.el`:
 
 ```elisp
     (load-theme 'dir-treeview-pleasant t)
 ```
+
+If you installed dir-treeview manually, this statement must occur after the `(require 'dir-treeview)` statement above.
+
+For moe information about themes, see
+[Custom Themes](https://www.gnu.org/software/emacs/manual/html_node/emacs/Custom-Themes.html#Custom-Themes "Custom Themes - GNU Emacs Manual")
+in the Emacs Manual.
 
 
 Usage
