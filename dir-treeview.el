@@ -1,11 +1,11 @@
 ;;; dir-treeview.el --- A directory tree browser and simple file manager -*- lexical-binding: t -*-
 
-;; Copyright (C) 2018-2020 Tilman Rassy
+;; Copyright (C) 2018-2021 Tilman Rassy
 
 ;; Author: Tilman Rassy <tilman.rassy@googlemail.com>
 ;; URL: https://github.com/tilmanrassy/emacs-dir-treeview
-;; Version: 1.0.0
-;; Package-Requires: ((emacs "24.4") (treeview "1.0.0"))
+;; Version: 1.1.0
+;; Package-Requires: ((emacs "24.4") (treeview "1.1.0"))
 ;; Keywords: tools, convenience, files
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -160,7 +160,11 @@ in a format understood by `kbd'.  Commands a names of Lisp functions."
     ("<mouse-2>" . dir-treeview-open-file-at-event)
     ("<mouse-3>" . dir-treeview-popup-node-menu-at-mouse)
     ("RET" . dir-treeview-open-file-at-point)
-    ("e" . dir-treeview-popup-node-menu-at-point))
+    ("e" . dir-treeview-popup-node-menu-at-point)
+    ("<C-down-mouse-1>" . ignore)
+    ("<C-mouse-1>" . treeview-toggle-select-node-at-event)
+    ("<S-down-mouse-1>" . ignore)
+    ("<S-mouse-1>" . treeview-select-gap-above-node-at-event))
   "Keymap of the labels.
 A list of assignments of key sequences to commands.  Key sequences are strings
 in a format understood by `kbd'.  Commands a names of Lisp functions."
@@ -530,6 +534,14 @@ See `dir-treeview-log-file-notify-event' for more information."
   '((t (:inherit dir-treeview-default-filename-face :foreground "#56338a")))
   "Face to highlight video files."
   :group 'dir-treeview)
+
+(defface dir-treeview-select-face
+  '((t (:background "DarkSlateGray1")))
+  "Face to highlight selected nodes.")
+
+(defface dir-treeview-highlight-face
+  '((t (:background "yellow")))
+  "Face to highlicht a node.")
 
 (defvar dir-treeview-start-node nil
   "The root node of the visible part of the tree.")
@@ -1059,19 +1071,12 @@ list is empty (i.e., nil), return nil."
       (if dir-treeview-buffers (setq buffer (car dir-treeview-buffers))) )
     buffer))
 
-(defun dir-treeview-apply-recursively (node callback)
-  "Apply CALLBACK to NODE and all its descendants.
-CALLBACK should be a function expecting a node as argument."
-  (funcall callback node)
-  (dolist (child (treeview-get-node-children node))
-    (dir-treeview-apply-recursively child callback)))
-
 (defun dir-treeview-for-each-node-in-each-buffer (callback)
   "Apply CALLBACK to each node in each Dir Treeview buffer.
 CALLBACK should be a function expecting a node as argument."
     (dolist (buffer (dir-treeview-get-buffers))
       (with-current-buffer buffer
-        (dir-treeview-apply-recursively dir-treeview-start-node callback))))
+        (treeview-apply-recursively dir-treeview-start-node callback))))
 
 (defun dir-treeview-get-nodes-in-each-buffer (&optional filter)
   "Return all nodes of all Dir Treeview buffers as a list.
@@ -1255,6 +1260,8 @@ value of LABEL.  The Tooltip text of the entry is HELP-TEXT."
                                                "B"
                                                "Whether backup files are shown") ))
 
+
+
 (defun dir-treeview-mode ()
   "Major mode for Dir Treeview buffers.
 
@@ -1267,8 +1274,8 @@ directories, and open terminals in directories."
         truncate-lines t
         mode-line-format (dir-treeview-create-mode-line-format))
   (use-local-map (dir-treeview-create-local-keymap))
+  (add-hook 'post-command-hook 'treeview-unselect-all-nodes-after-keyboard-quit 0 t)
   (run-mode-hooks 'dir-treeview-mode-hook))
-
 (put 'dir-treeview-mode 'mode-class 'special)
 
 (defun dir-treeview-buffer-name (dir)
@@ -1300,8 +1307,11 @@ Returns \"*dir-treeview DIR *\" (where DIR is substituted by the value of DIR)."
           treeview-get-label-keymap-function 'dir-treeview-get-label-keymap
           treeview-get-label-face-function 'dir-treeview-get-label-face
           treeview-get-label-mouse-face-function (lambda (_node) 'dir-treeview-label-mouse-face)
+          treeview-get-selected-node-face-function (lambda (_node) 'dir-treeview-select-face)
+          treeview-get-highlighted-node-face-function (lambda (_node) 'dir-treeview-highlight-face)
           treeview-after-node-expanded-function 'dir-treeview-after-node-expanded
-          dir-treeview-start-node (dir-treeview-new-node dir nil))
+          dir-treeview-start-node (dir-treeview-new-node dir nil)
+          treeview-get-root-node-function (lambda () dir-treeview-start-node))
     (treeview-expand-node dir-treeview-start-node)
     (dir-treeview-redisplay)
     (goto-char (point-min))
@@ -1341,48 +1351,6 @@ such buffer found in the list of dir treeview buffers.
 If there exists no such buffer, create one and switch to it."
   (interactive)
   (dir-treeview-open dir-treeview-default-root))
-
-(defun dir-treeview-refresh-node (node)
-  "Update and redisplay NODE.
-
-First, NODE is updated by calling `treeview-update-node'.  Then, NODE is
-redisplayed by calling `treeview-redisplay-node'."
-  (let ( (pos (point)) )
-    (treeview-update-node node)
-    (treeview-redisplay-node node)
-    (goto-char (if (<= pos (point-max)) (if (>= pos (point-min)) pos (point-min)) (point-max))) ))
-
-(defun dir-treeview-refresh-tree ()
-  "Update and redisplay the entire tree."
-  (interactive)
-  (dir-treeview-refresh-node dir-treeview-start-node))
-
-(defun dir-treeview-refresh-node-at-point ()
-  "Update and redisplay the node at point.
-Calls `dir-treeview-refresh-node' with the node at point.
-If there is no node at point, does nothing."
-  (interactive)
-  (treeview-call-for-node-at-point 'dir-treeview-refresh-node))
-
-(defun dir-treeview-refresh-subtree-at-point ()
-  "Update and redisplay the subtree point is in.
-If the node at point is expanded, calls `dir-treeview-refresh-node' for the
-node at point.  If the node at point is not expanded and its parent is not
-nil, calls `dir-treeview-refresh-node' for the parent.  If the node at point
-is not expanded and its parent is nil, calls `dir-treeview-refresh-node' for
-the node at point.  If there is no node at point, does nothing."
-  (interactive)
-  (let ( (node (treeview-get-node-at-pos (point))) )
-    (when node
-      (unless (treeview-node-expanded-p node)
-        (let ( (parent (treeview-get-node-parent node)) )
-          (when parent (setq node parent))))
-      (dir-treeview-refresh-node node))))
-
-(defun dir-treeview-refresh ()
-  "Refresh the entire tree."
-  (interactive)
-  (dir-treeview-refresh-node dir-treeview-start-node))
 
 (defun dir-treeview-to-parent-dir ()
   "Display the tree for the parent directory."
@@ -1508,7 +1476,7 @@ to copy directories."
           (copy-file filename new-filename t)
           (if parent-of-new
               ;; If file watch is enabled, we let its callback function do the refreshing
-              (unless dir-treeview-file-watch-enabled (dir-treeview-refresh-node parent-of-new))) ))))
+              (unless dir-treeview-file-watch-enabled (treeview-refresh-node parent-of-new))) ))))
 
 (defun dir-treeview-copy-dir (node)
   "Copy the directory corresponding to NODE.
@@ -1524,7 +1492,7 @@ already, asks for confirmation in the minibuffer before overwriting it."
           (copy-directory dir new-dir nil t)
           (if parent-of-new
               ;; If file watch is enabled, we let its callback function do the refreshing
-              (unless dir-treeview-file-watch-enabled (dir-treeview-refresh-node parent-of-new))) ))))
+              (unless dir-treeview-file-watch-enabled (treeview-refresh-node parent-of-new))) ))))
 
 (defun dir-treeview-copy-file-or-dir-at-point ()
   "Copy the file or directory corresponding to the node at point.
@@ -1554,9 +1522,9 @@ overwriting it."
           (rename-file filename new-filename t)
           ;; If file watch is enabled, we let its callback function do the refreshing
           (unless dir-treeview-file-watch-enabled
-            (dir-treeview-refresh-node parent)
+            (treeview-refresh-node parent)
             (if (and parent-of-new (not (eq parent parent-of-new)))
-                (dir-treeview-refresh-node parent-of-new))) ))))
+                (treeview-refresh-node parent-of-new))) ))))
 
 (defun dir-treeview-rename-file-at-point ()
   "Rename the file or directory corresponding to the node at point.
@@ -1574,7 +1542,7 @@ to delete directories."
     (when (dir-treeview-user-confirm-y-or-n (concat "Delete " (dir-treeview-local-filename filename) "? "))
       (delete-file filename)
       ;; If file watch is enabled, we let its callback function do the refreshing
-      (unless dir-treeview-file-watch-enabled (dir-treeview-refresh-node (treeview-get-node-parent node))) )))
+      (unless dir-treeview-file-watch-enabled (treeview-refresh-node (treeview-get-node-parent node))) )))
 
 (defun dir-treeview-delete-dir (node)
   "Recursively delete the directory corresponding to NODE.
@@ -1583,7 +1551,7 @@ Asks for confirmation in the minibuffer."
     (when (dir-treeview-user-confirm-y-or-n (concat "Recursively delete " (dir-treeview-local-filename dir) " and all its contents? "))
       (delete-directory dir t)
       ;; If file watch is enabled, we let its callback function do the refreshing
-      (unless dir-treeview-file-watch-enabled (dir-treeview-refresh-node (treeview-get-node-parent node))) )))
+      (unless dir-treeview-file-watch-enabled (treeview-refresh-node (treeview-get-node-parent node))) )))
 
 (defun dir-treeview-delete-file-or-dir-at-point ()
   "Delete the file or directory corresponding to the node at point.
@@ -1595,11 +1563,130 @@ corresponds to a non-directory.  If there is no node at point, does nothing."
     (when node
       (if (dir-treeview-directory-p node) (dir-treeview-delete-dir node) (dir-treeview-delete-file node)))))
 
+(defun dir-treeview-user-confirm-overwrite (filename)
+  "Ask the user for confirmation to overwrite one or all files in question.
+This function is used when a list of files is copied or moved.  It is called for
+each file for which the target exists. FILENAME is the filename of the target.
+A prompt is displayed saying that the target exists and asking if 
+it should be overwritten.  The user can answer with \"y\", \"n\", \"a\" or \"o\".
+The meaning is the following:
+
+  y - (yes) overwrite target
+  n - (no) do not overwrite target
+  a - (all) overwrite this target and do so for the rest of the files
+  o - (none) do not overwrite this file and do so for the rest of the files
+
+"
+  (interactive)
+  (let* ( (prompt (format "%s exists - overwrite? " filename))
+          (input (read-event (concat prompt "(y, n, a for all, o for none) "))) )
+    (while (not (member input '(?y ?n ?a ?o)))
+      (setq input (read-event (concat "Please answer y, n, a, or o - " prompt))))
+    input))
+
+(defun dir-treeview-user-inform (message)
+  "Display MESSAGE in the echo area and wait until the user presses RET."
+  (while (not (eq (read-event (concat message " (press RET key to continue)")) 'return))))
+
+(defun dir-treeview-copy-or-move-files-to-dir (source-files target-dir copy-or-move-function)
+  "Copy or move SOURCE-FILES to TARGET-DIR by means of COPY-OR-MOVE-FUNCTION.
+This is an auxliary function to implement the copying or moving of several files
+to the same target directory.  SOURCE-FILES should be a list of filenames.
+TARGET-DIR should be a directory name.  COPY-OR-MOVE-FUNCTION should be a
+function expecting two filenames as arguments.  It is called for each filename
+in SOURCE-FILES, with that filename as first and TARGET-DIR as second argument.
+COPY-OR-MOVE-FUNCTION should copy or move the respective source file to
+TARGET-DIR."
+  (let ( (overwrite 'ask) )
+    (unless (file-directory-p target-dir) (error "Not a directory: %s" target-dir))
+    (dolist (source-file source-files)
+      (let* ( (filename (file-name-nondirectory source-file))
+              (target-file (concat (file-name-as-directory target-dir) filename)) )
+        (when (or (not (file-exists-p target-file))
+                  (if (not (file-regular-p target-file))
+                      (progn (dir-treeview-user-inform (format "%s exists as a non-regular file - skipping" filename)) nil)
+                    (eq overwrite 'all)
+                    (and (eq overwrite 'ask)
+                         (let ( (user-answer (dir-treeview-user-confirm-overwrite filename)) )
+                           (cond ((equal user-answer ?a) (setq overwrite 'all))
+                                 ((equal user-answer ?o) (setq overwrite 'none)))
+                           (member user-answer '(?y ?a))))))
+          (funcall copy-or-move-function source-file target-file) )))
+    ;; If file watch is enabled, we let its callback function do the refreshing
+    (unless dir-treeview-file-watch-enabled (treeview-refresh-tree)) ))
+
+(defun dir-treeview-delete-files (files)
+  "Delete FILES.
+FILES should be a list of filenames."
+  (let ( (nondirs ()) (dirs ()) (prompt nil) )
+    (dolist (file files) (push file (if (file-directory-p file) dirs nondirs)))
+    (let ( (prompt nil) (nondirs-count (length nondirs)) (dirs-count (length dirs)) )
+      (when (> nondirs-count 0)
+        (setq prompt (format "Delete %s file(s)" nondirs-count)))
+      (when (> dirs-count 0)
+        (setq prompt (if prompt (concat prompt (format " and recursively delete %s directorie(s)" dirs-count))
+                       (format "Recursively delete %s directorie(s)" dirs-count))))
+      (setq prompt (concat prompt "? "))
+      (when (dir-treeview-user-confirm-y-or-n prompt)
+        (dolist (file nondirs) (delete-file file))
+        (dolist (dir dirs) (delete-directory dir t))
+        ;; If file watch is enabled, we let its callback function do the refreshing
+        (unless dir-treeview-file-watch-enabled (treeview-refresh-tree)) ))) )
+
+(defun dir-treeview-get-selected-files ()
+  "Return all selected files (abolute names)."
+  (let ( (selected-files ()) )
+    (dolist (node (treeview-get-all-selected-nodes))
+      (let ( (file (treeview-get-node-prop node 'absolute-name)) )
+        (unless (member file selected-files) (push file selected-files)) ))
+    selected-files))
+
+(defun dir-treeview-copy-selected-files-to (target-dir)
+  "Copy all selected files to TARGET-DIR."
+  (dir-treeview-copy-or-move-files-to-dir
+   (dir-treeview-get-selected-files)
+   target-dir
+   ;; Copy function:
+   (lambda (source-abs-name target-abs-name)
+     (if (file-directory-p source-abs-name)
+         (progn
+           ;; copy-directory has no flag to overwrite an existing target, so we delete the target if existing:
+           (when (file-exists-p target-abs-name) (delete-file target-abs-name))
+           (copy-directory source-abs-name target-abs-name))
+       (copy-file source-abs-name target-abs-name t))))
+  (treeview-unselect-all-nodes))
+
+(defun dir-treeview-move-selected-files-to (target-dir)
+  "Move all selected files to TARGET-DIR."
+  (dir-treeview-copy-or-move-files-to-dir
+   (dir-treeview-get-selected-files)
+   target-dir
+   ;; Move function:
+   (lambda (source-abs-name target-abs-name) (rename-file source-abs-name target-abs-name t)))
+  (treeview-unselect-all-nodes))
+
+(defun dir-treeview-delete-selected-files ()
+  "Delete all selected files."
+  (dir-treeview-delete-files (dir-treeview-get-selected-files))
+  (treeview-unselect-all-nodes))
+
+(defun dir-treeview-open-selected-files ()
+  "Open all selected files in Emacs."
+  (let ( (buffer nil) )
+    (dolist (filename (dir-treeview-get-selected-files)) (setq buffer (find-file-noselect filename)))
+    (treeview-unselect-all-nodes)
+    (when buffer (switch-to-buffer buffer)) ))
+
+(defun dir-treeview-open-selected-files-with ()
+  "Open all selected files with an external program read in the minibuffer."
+  (apply #'call-process (read-shell-command "Open selected files with command: ") nil 0 nil (dir-treeview-get-selected-files))
+  (treeview-unselect-all-nodes))
+
 (defun dir-treeview-create-subdir (node)
   "Create a subdiectory of the directory corresponding to NODE."
   (make-directory (dir-treeview-read-directory-name "New subdirectory: " (treeview-get-node-prop node 'absolute-name)))
   ;; If file watch is enabled, we let its callback function do the refreshing
-  (unless dir-treeview-file-watch-enabled (dir-treeview-refresh-node node)))
+  (unless dir-treeview-file-watch-enabled (treeview-refresh-node node)))
 
 (defun dir-treeview-create-subdir-at-point ()
   "Create a subdiectory of the directory corresponding to the node at point.
@@ -1644,49 +1731,58 @@ For the parent menu (the popup menu of NODE), see `dir-treeview-get-node-menu'."
   "Create and return the default popup menu for NODE.
 This is the default implementation of the customizable variable
 `dir-treeview-get-node-menu-function'."
-  (let* ( (absolute-name (treeview-get-node-prop node 'absolute-name))
-          (local-name (dir-treeview-local-filename absolute-name)) )
-    (if (file-directory-p absolute-name)
-        (list local-name
-              (vector "Open" (list 'find-file absolute-name))
-              (vector "Open in Other Window" (list 'find-file-other-window absolute-name))
-              (vector "Open in New Frame"  (list 'find-file-other-frame absolute-name))
-              "--"
-              (dir-treeview-get-open-with-menu node)
-              "--"
-              (vector "Open Terminal" (list 'dir-treeview-open-terminal absolute-name))
-              (vector "Re-read" (list 'dir-treeview-refresh-node (list 'quote node)))
-              (vector "Create File" (list 'dir-treeview-open-new-file absolute-name))
-              (vector "Create Subdir" (list 'dir-treeview-create-subdir (list 'quote node)))
-              "--"
-              (vector "Copy" (list 'dir-treeview-copy-dir (list 'quote node)))
-              (vector "Rename" (list 'dir-treeview-rename-file (list 'quote node)))
-              (vector "Delete" (list 'dir-treeview-delete-dir (list 'quote node))))
-      (if (funcall dir-treeview-is-openable-in-editor-p-function absolute-name)
+  (if (treeview-node-selected-p node)
+      (list "Selection"
+            (vector "Delete selected files" (list 'dir-treeview-delete-selected-files))
+            (vector "Open selected files" (list 'dir-treeview-open-selected-files))
+            (vector "Open selected files with . . ." (list 'dir-treeview-open-selected-files-with)))
+    (let* ( (absolute-name (treeview-get-node-prop node 'absolute-name))
+            (local-name (dir-treeview-local-filename absolute-name))
+            (selected-nodes-exist (treeview-selected-nodes-exist)) )
+      (if (file-directory-p absolute-name)
           (list local-name
                 (vector "Open" (list 'find-file absolute-name))
                 (vector "Open in Other Window" (list 'find-file-other-window absolute-name))
                 (vector "Open in New Frame"  (list 'find-file-other-frame absolute-name))
                 "--"
+                (vector "Copy selected files here" (list 'dir-treeview-copy-selected-files-to absolute-name) :enable selected-nodes-exist)
+                (vector "Move selected files here" (list 'dir-treeview-move-selected-files-to absolute-name) :enable selected-nodes-exist)
+                "--"
                 (dir-treeview-get-open-with-menu node)
                 "--"
-                (vector "View" (list 'view-file absolute-name))
-                (vector "View in Other Window" (list 'view-file-other-window absolute-name))
-                (vector "View in New Frame" (list 'view-file-other-frame absolute-name))
+                (vector "Open Terminal" (list 'dir-treeview-open-terminal absolute-name))
+                (vector "Re-read" (list 'treeview-refresh-node (list 'quote node)))
+                (vector "Create File" (list 'dir-treeview-open-new-file absolute-name))
+                (vector "Create Subdir" (list 'dir-treeview-create-subdir (list 'quote node)))
+                "--"
+                (vector "Copy" (list 'dir-treeview-copy-dir (list 'quote node)))
+                (vector "Rename" (list 'dir-treeview-rename-file (list 'quote node)))
+                (vector "Delete" (list 'dir-treeview-delete-dir (list 'quote node))))
+        (if (funcall dir-treeview-is-openable-in-editor-p-function absolute-name)
+            (list local-name
+                  (vector "Open" (list 'find-file absolute-name))
+                  (vector "Open in Other Window" (list 'find-file-other-window absolute-name))
+                  (vector "Open in New Frame"  (list 'find-file-other-frame absolute-name))
+                  "--"
+                  (dir-treeview-get-open-with-menu node)
+                  "--"
+                  (vector "View" (list 'view-file absolute-name))
+                  (vector "View in Other Window" (list 'view-file-other-window absolute-name))
+                  (vector "View in New Frame" (list 'view-file-other-frame absolute-name))
+                  "--"
+                  (vector "Open Terminal" (list 'dir-treeview-open-terminal absolute-name))
+                  "--"
+                  (vector "Copy" (list 'dir-treeview-copy-file (list 'quote node)))
+                  (vector "Rename" (list 'dir-treeview-rename-file (list 'quote node)))
+                  (vector "Delete" (list 'dir-treeview-delete-file (list 'quote node))))
+          (list local-name
+                (dir-treeview-get-open-with-menu node)
                 "--"
                 (vector "Open Terminal" (list 'dir-treeview-open-terminal absolute-name))
                 "--"
-                (vector "Copy" (list 'dir-treeview-copy-file (list 'quote node)))
-                (vector "Rename" (list 'dir-treeview-rename-file (list 'quote node)))
-                (vector "Delete" (list 'dir-treeview-delete-file (list 'quote node))))
-        (list local-name
-              (dir-treeview-get-open-with-menu node)
-              "--"
-              (vector "Open Terminal" (list 'dir-treeview-open-terminal absolute-name))
-              "--"
-              (vector "Copy" (list 'dir-treeview-copy-file absolute-name))
-              (vector "Rename" (list 'dir-treeview-rename-file absolute-name))
-              (vector "Delete" (list 'dir-treeview-delete-file absolute-name))) ))))
+                (vector "Copy" (list 'dir-treeview-copy-file absolute-name))
+                (vector "Rename" (list 'dir-treeview-rename-file absolute-name))
+                (vector "Delete" (list 'dir-treeview-delete-file absolute-name))) )))) )
 
 (defun dir-treeview-get-node-menu (node)
   "Create and return the popup menu for NODE.
@@ -1697,7 +1793,7 @@ This function calls the function stored in the customizable variable
   (funcall dir-treeview-get-node-menu-function node))
 
 (defun dir-treeview-popup-node-menu-at-mouse (event)
-  "Show the popup menu of the node where  EVENT occurred.
+  "Show the popup menu of the node where EVENT occurred.
 EVENT must be a mouse event.  If there is no such node, does nothing."
   (interactive "@e")
   (let ( (node (treeview-get-node-at-event event)) )
@@ -1724,7 +1820,7 @@ If there is no node at point, does nothing."
 (defun dir-treeview-toggle-option (variable)
   "Toggle the option represented by VARIABLE."
   (set variable (not (symbol-value variable)))
-  (dir-treeview-refresh)
+  (treeview-refresh-tree)
   (force-mode-line-update))
 
 (defun dir-treeview-toggle-show-hidden-files ()
@@ -1751,8 +1847,8 @@ If there is no node at point, does nothing."
     (define-key map (kbd "<up>") 'treeview-previous-line)
     (define-key map (kbd "C-<up>") 'treeview-goto-first-sibling)
     (define-key map (kbd "C-<down>") 'treeview-goto-last-sibling)
-    (define-key map (kbd ".") 'dir-treeview-refresh-subtree-at-point)
-    (define-key map (kbd "=") 'dir-treeview-refresh-tree)
+    (define-key map (kbd ".") 'treeview-refresh-subtree-at-point)
+    (define-key map (kbd "=") 'treeview-refresh-tree)
     (define-key map (kbd "d") 'dir-treeview-delete-file-or-dir-at-point)
     (define-key map (kbd "<delete>") 'dir-treeview-delete-file-or-dir-at-point)
     (define-key map (kbd "c") 'dir-treeview-copy-file-or-dir-at-point)
@@ -1760,6 +1856,8 @@ If there is no node at point, does nothing."
     (define-key map (kbd "t") 'dir-treeview-open-terminal-at-point)
     (define-key map (kbd "f") 'dir-treeview-open-new-file-at-point)
     (define-key map (kbd "s") 'dir-treeview-create-subdir-at-point)
+    (define-key map (kbd "a") 'treeview-toggle-select-node-at-point)
+    (define-key map (kbd "A") 'treeview-select-gap-above-node-at-point)
     (define-key map [menu-bar treeview]
       (cons "Dir-Treeview" (make-sparse-keymap "Dir-Treeview")))
     (define-key map [menu-bar treeview customize]
