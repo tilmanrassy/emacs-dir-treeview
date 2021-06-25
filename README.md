@@ -15,6 +15,7 @@ Emacs file system navigator and simple file manager.
   * [Current vs. side window](#current-vs-side-window)
   * [Navigating in the tree, with and without mouse](#navigating-in-the-tree-with-and-without-mouse)
   * [The context menu](#the-context-menu)
+  * [Selection](#selection)
   * [Key bindings](#key-bindings)
 * [File notifications](#file-notifications)
 * [Customization](#customization)
@@ -31,6 +32,7 @@ Overview
 * Can open files by external programs or Lisp functions
 * Can open terminal in directory
 * Can copy, delete, and move files
+* Provides selection of multiple files to operate on them
 * Works in text mode, too
 * Supports file notifications
 * Highly customizable
@@ -146,6 +148,8 @@ It is possible to navigate in the tree completely without the mouse, only with t
 
 ### The context menu
 
+This section describes the context menu of unselected nodes. Selection and its effect on the context menu is described in the next section.
+
 A right-click on an node opens the nodes's context menu. Alternativly, the context menu can be opened with the `e` key when the point is on a node. The menu looks different depending on whether the node is a directory or not:
 
 #### Non-directory-file:
@@ -161,6 +165,30 @@ The `Open with...` item opens a submenu with external programs or Lisp functions
 The `Open Terminal` item opens a shell in terminal program at the corresponding directory.
 
 Both the context menu and the `Open with...` submenu are customizable.
+
+### Selection
+
+#### Selecting and unselecting files
+
+To select a file, click the filename while holding the control key pressed (`<C-mouse-1>`), or move the point to the line of the file and type `a`. The same unselects the file if it is selected, thus, `<C-mouse-1>` and `a` actually toggle selection. You can select as many files as you want. Selected files are highlighted in the customizable face `dir-treeview-select-face`.
+
+You can also select a region of successive files at once: First, select the topmost file. Then, click the last file while holding the shift key pressed (`<S-mouse-1>`), or move the point to the line of the last file and type `A`.
+
+To unselect all files, simply press `C-g`.
+
+#### Operations on selected files
+
+The following operations can be done on the selected files:
+
+* Copying all selected files
+* Moving all selected files
+* Deleting all selected files
+* Opening all selected files in Emacs
+* Open all selected files with an external program
+
+To copy or move the selected files, navigate to the destination (which must be a directory), and open its context menu (right-click or `e`). The context menu offers one item for moving and one for copying the selected files to the destination directory.
+
+For the other three operations (deleting, opening in Emacs, opening with an external program), open the context menu of one of the selected files. The context menu consists of three items, one for each of the three operations.
 
 ### Key bindings
 
@@ -184,6 +212,8 @@ Key         | Action
 `t`         | Open terminal
 `f`         | New file
 `s`         | New directory
+`a`         | Toggle selection
+`A`         | Select successive files (cf. [Selecting and unselecting files](#selecting-and-unselecting-files))
 `h`         | Toggle show hidden files
 `b`         | Toggle show backup files
 
@@ -201,13 +231,15 @@ Key         | Action
 
 #### Label keymap
 
-Key         | Action
-------------|---------------------
-`<mouse-1>` | Open file in Emacs
-`<mouse-2>` | Open file in Emacs
-`<mouse-3>` | Open context menu
-`RET`       | Open file in Emacs
-`e`         | Open context menu
+Key           | Action
+--------------|------------------------
+`<mouse-1>`   | Open file in Emacs
+`<mouse-2>`   | Open file in Emacs
+`<mouse-3>`   | Open context menu
+`RET`         | Open file in Emacs
+`e`           | Open context menu
+`<C-mouse-1>` | Toggle selection
+`<S-mouse-1>` | Select successive files (cf. [Selecting and unselecting files](#selecting-and-unselecting-files))
 
 
 File notifications

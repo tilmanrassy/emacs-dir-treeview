@@ -29,6 +29,7 @@
 ;; Can open files by external programs or Lisp functions
 ;; Can open terminal in directory
 ;; Can copy, delete, and move files
+;; Provides selection of multiple files to operate on them
 ;; Works in text mode, too
 ;; Supports file notifications
 ;; Highly customizable
@@ -1476,7 +1477,7 @@ to copy directories."
           (copy-file filename new-filename t)
           (if parent-of-new
               ;; If file watch is enabled, we let its callback function do the refreshing
-              (unless dir-treeview-file-watch-enabled (treeview-refresh-node parent-of-new))) ))))
+              (unless dir-treeview-file-watch-enabled (treeview-refresh-node parent-of-new))) )) ))
 
 (defun dir-treeview-copy-dir (node)
   "Copy the directory corresponding to NODE.
@@ -1566,17 +1567,14 @@ corresponds to a non-directory.  If there is no node at point, does nothing."
 (defun dir-treeview-user-confirm-overwrite (filename)
   "Ask the user for confirmation to overwrite one or all files in question.
 This function is used when a list of files is copied or moved.  It is called for
-each file for which the target exists. FILENAME is the filename of the target.
-A prompt is displayed saying that the target exists and asking if 
+each file for which the target exists.  FILENAME is the filename of the target.
+A prompt is displayed saying that the target exists and asking if
 it should be overwritten.  The user can answer with \"y\", \"n\", \"a\" or \"o\".
 The meaning is the following:
-
   y - (yes) overwrite target
   n - (no) do not overwrite target
   a - (all) overwrite this target and do so for the rest of the files
-  o - (none) do not overwrite this file and do so for the rest of the files
-
-"
+  o - (none) do not overwrite this file and do so for the rest of the files"
   (interactive)
   (let* ( (prompt (format "%s exists - overwrite? " filename))
           (input (read-event (concat prompt "(y, n, a for all, o for none) "))) )
