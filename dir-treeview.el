@@ -1564,6 +1564,19 @@ corresponds to a non-directory.  If there is no node at point, does nothing."
     (when node
       (if (dir-treeview-directory-p node) (dir-treeview-delete-dir node) (dir-treeview-delete-file node)))))
 
+(defun dir-treeview-delete-at-point ()
+  "Delete file at point, or all selected files if node at point is selected.
+If the node at point is selected, calls `dir-treeview-delete-selected-files'.
+Otherwise, if the node at point corresponds to a directory, calls
+`dir-treeview-delete-dir'.  Otherwise, calls `dir-treeview-delete-file'.
+If there is no node at point, does nothing."
+  (interactive)
+  (let ( (node (treeview-get-node-at-pos (point))) )
+    (when node
+      (if (treeview-node-selected-p node) (dir-treeview-delete-selected-files)
+        (if (dir-treeview-directory-p node) (dir-treeview-delete-dir node)
+          (dir-treeview-delete-file node) )))))
+
 (defun dir-treeview-user-confirm-overwrite (filename)
   "Ask the user for confirmation to overwrite one or all files in question.
 This function is used when a list of files is copied or moved.  It is called for
@@ -1847,8 +1860,8 @@ If there is no node at point, does nothing."
     (define-key map (kbd "C-<down>") 'treeview-goto-last-sibling)
     (define-key map (kbd ".") 'treeview-refresh-subtree-at-point)
     (define-key map (kbd "=") 'treeview-refresh-tree)
-    (define-key map (kbd "d") 'dir-treeview-delete-file-or-dir-at-point)
-    (define-key map (kbd "<delete>") 'dir-treeview-delete-file-or-dir-at-point)
+    (define-key map (kbd "d") 'dir-treeview-delete-at-point)
+    (define-key map (kbd "<delete>") 'dir-treeview-delete-at-point)
     (define-key map (kbd "c") 'dir-treeview-copy-file-or-dir-at-point)
     (define-key map (kbd "r") 'dir-treeview-rename-file-at-point)
     (define-key map (kbd "t") 'dir-treeview-open-terminal-at-point)
