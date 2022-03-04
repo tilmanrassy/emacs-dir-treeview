@@ -1751,8 +1751,8 @@ symbol is added."
   (if (< byte-count 1024) (format "%d" byte-count)
     (let ( (unit "") (size (float byte-count)) )
       (setq unit "K" size (/ size 1024))
-      (when (> size 1024) (setq unit "M" size (/ size 1024)))
-      (when (> size 1024) (setq unit "G" size (/ size 1024)))
+      (when (>= size 1024) (setq unit "M" size (/ size 1024)))
+      (when (>= size 1024) (setq unit "G" size (/ size 1024)))
       (format "%.2f%s" size unit))))
 
 (defun dir-treeview-join-strings (&rest items)
