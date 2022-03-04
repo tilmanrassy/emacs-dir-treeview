@@ -1,10 +1,10 @@
 ;;; dir-treeview.el --- A directory tree browser and simple file manager -*- lexical-binding: t -*-
 
-;; Copyright (C) 2018-2021 Tilman Rassy
+;; Copyright (C) 2018-2022 Tilman Rassy
 
 ;; Author: Tilman Rassy <tilman.rassy@googlemail.com>
 ;; URL: https://github.com/tilmanrassy/emacs-dir-treeview
-;; Version: 1.1.0
+;; Version: 1.2.0
 ;; Package-Requires: ((emacs "24.4") (treeview "1.1.0"))
 ;; Keywords: tools, convenience, files
 
@@ -436,6 +436,11 @@ See `dir-treeview-log-file-notify-event' for more information."
   :group 'dir-treeview
   :type 'boolean)
 
+(defcustom dir-treeview-time-format "%Y-%m-%d %H:%M:%S %3N"
+  "Format string for displaying timestamps."
+  :group 'dir-treeview
+  :type 'string)
+
 (defface dir-treeview-default-icon-face
   ()
   "Default face to highlight icons."
@@ -543,6 +548,35 @@ See `dir-treeview-log-file-notify-event' for more information."
 (defface dir-treeview-highlight-face
   '((t (:background "yellow")))
   "Face to highlicht a node.")
+(defface dir-treeview-link-target-face
+  ()
+  "Face to highlight link targets."
+  :group 'dir-treeview)
+
+(defface dir-treeview-file-mode-face
+  '((t (:foreground "#663399")))
+  "Face to highlight file mode characters."
+  :group 'dir-treeview)
+
+(defface dir-treeview-file-owner-face
+  '((t (:foreground "DeepPink4")))
+  "Face to highlight file owner."
+  :group 'dir-treeview)
+
+(defface dir-treeview-file-group-face
+  '((t (:foreground "DeepPink4")))
+  "Face to highlight file group."
+  :group 'dir-treeview)
+
+(defface dir-treeview-file-size-face
+  '((t (:foreground "RoyalBlue")))
+  "Face to highlight file size."
+  :group 'dir-treeview)
+
+(defface dir-treeview-file-time-face
+  '((t (:foreground "OrangeRed3")))
+  "Face to highlight file times."
+  :group 'dir-treeview)
 
 (defvar dir-treeview-start-node nil
   "The root node of the visible part of the tree.")
@@ -1261,8 +1295,6 @@ value of LABEL.  The Tooltip text of the entry is HELP-TEXT."
                                                "B"
                                                "Whether backup files are shown") ))
 
-
-
 (defun dir-treeview-mode ()
   "Major mode for Dir Treeview buffers.
 
@@ -1710,6 +1742,63 @@ a non-directory.  If there is no node at point, does nothing."
       (unless (dir-treeview-directory-p node) (user-error "Node at point is not a directory"))
       (dir-treeview-create-subdir node))))
 
+(defun dir-treeview-format-file-size (byte-count)
+  "Return a human-readable from of BYTE-COUNT.
+The latter should by an integer representing a number of bytes.  Returns a string
+describing this value in a suitable unit; one of G (gigabytes), M (megabytes), K
+(kilobytes) or bytes.  Examples: 5.23G, 12.05K, 756.  If unit is bytes, no unit
+symbol is added."
+  (if (< byte-count 1024) (format "%d" byte-count)
+    (let ( (unit "") (size (float byte-count)) )
+      (setq unit "K" size (/ size 1024))
+      (when (> size 1024) (setq unit "M" size (/ size 1024)))
+      (when (> size 1024) (setq unit "G" size (/ size 1024)))
+      (format "%.2f%s" size unit))))
+
+(defun dir-treeview-join-strings (&rest items)
+  "Create a string from parts, optionally apply faces to parts.
+Auxiliary function to create strings with highlighted parts.  ITEMS must be a
+list.  Eeach list item must be either a string or a cons cell (FACE . STRING)
+where FACE is a face and STRING is a string.  Joins all strings, where the
+strings occurring in cons cells are given the face specified in the cons cell."
+  (let ( (result "") (pos 0) )
+    (dolist (item items)
+      (if (consp item)
+          (let ( (face (car item)) (part (cdr item)) (start pos) )
+            (setq result (concat result part) pos (+ pos (length part)))
+            (put-text-property start pos 'face face result))
+        (setq result (concat result item) pos (+ pos (length item))) ))
+    result))
+
+(defun dir-treeview-create-file-info-string (filename)
+  "Create a string describing the file attributes of FILENAME.
+The string is similar to the output of the Linux command ls -l.  It contains
+the file modes (e.g., -rw-r--r-), owner. group, size, and last modification time."
+  (let ( (attribs (file-attributes filename 'string)) )
+    (when attribs
+      (dir-treeview-join-strings
+       (if (stringp (nth 0 attribs)) (cons 'dir-treeview-link-target-face (concat " -> " (nth 0 attribs))) "")
+       " " (cons 'dir-treeview-file-mode-face (nth 8 attribs))
+       " " (cons 'dir-treeview-file-owner-face (nth 2 attribs))
+       " " (cons 'dir-treeview-file-group-face (nth 3 attribs))
+       " " (cons 'dir-treeview-file-size-face (dir-treeview-format-file-size (nth 7 attribs)))
+       " " (cons 'dir-treeview-file-time-face (format-time-string dir-treeview-time-format (nth 5 attribs)))
+       " ") )) )
+
+(defun dir-treeview-show-file-info (filename)
+  "Show the file attributes of FILENAME in the echo area.
+Calls `dir-treeview-create-file-info-string' with FILENAME as argument and
+displayes the result in the echo area "
+  (let ( (file-info (dir-treeview-create-file-info-string filename)) )
+    (when file-info (message "%s" file-info)) ))
+
+(defun dir-treeview-show-info-for-node-at-point ()
+  "Show the file attributes of the the node at point in the echo area.
+Calls `dir-treeview-show-file-info' for the file corresponding to the node at
+point.  If there is no node at point, or the file doesn't exist, does nothing."
+  (interactive)
+  (dir-treeview-call-for-file-at-point 'dir-treeview-show-file-info))
+
 (defun dir-treeview-get-open-with-menu (node)
   "Create and return the 'Open with ...' submenu of the popup menu of NODE.
 The submenu offers external programs or Lisp functions to open the file
@@ -1869,6 +1958,7 @@ If there is no node at point, does nothing."
     (define-key map (kbd "s") 'dir-treeview-create-subdir-at-point)
     (define-key map (kbd "a") 'treeview-toggle-select-node-at-point)
     (define-key map (kbd "A") 'treeview-select-gap-above-node-at-point)
+    (define-key map (kbd "i") 'dir-treeview-show-info-for-node-at-point)
     (define-key map [menu-bar treeview]
       (cons "Dir-Treeview" (make-sparse-keymap "Dir-Treeview")))
     (define-key map [menu-bar treeview customize]
