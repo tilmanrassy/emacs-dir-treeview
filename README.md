@@ -214,6 +214,7 @@ Key         | Action
 `t`         | Open terminal
 `f`         | New file
 `s`         | New directory
+`i`         | Show file info in echo area
 `a`         | Toggle selection
 `A`         | Select successive files (cf. [Selecting and unselecting files](#selecting-and-unselecting-files))
 `h`         | Toggle show hidden files
