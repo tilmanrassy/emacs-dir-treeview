@@ -1537,6 +1537,15 @@ corresponds to a non-directory.  If there is no node at point, does nothing."
     (when node
       (if (dir-treeview-directory-p node) (dir-treeview-copy-dir node) (dir-treeview-copy-file node)))))
 
+(defun dir-treeview-update-buffer-file-name (old-filename new-filename)
+  "If a buffer with the file name OLD-FILENAME exists, change it to NEW-FILENAME.
+If a buffer exists that visits OLD-FILENAME, the file name of the buffer is
+changed to NEW-FILENAME so the buffer visits that file now.  This auxiliary
+function is used to update the buffer file name when a file is moved or renamed and a
+buffer is visiting the file."
+  (let ( (buffer (get-file-buffer old-filename)) )
+    (when buffer (with-current-buffer buffer (set-visited-file-name new-filename nil t)) )) )
+
 (defun dir-treeview-rename-file (node)
   "Rename the file or directory corresponding to NODE.
 Reads the target in the minibuffer.  If the target is a directory, the file
@@ -1557,7 +1566,8 @@ overwriting it."
           (unless dir-treeview-file-watch-enabled
             (treeview-refresh-node parent)
             (if (and parent-of-new (not (eq parent parent-of-new)))
-                (treeview-refresh-node parent-of-new))) ))))
+                (treeview-refresh-node parent-of-new)))
+          (dir-treeview-update-buffer-file-name filename new-filename) ))))
 
 (defun dir-treeview-rename-file-at-point ()
   "Rename the file or directory corresponding to the node at point.
@@ -1705,7 +1715,9 @@ FILES should be a list of filenames."
    (dir-treeview-get-selected-files)
    target-dir
    ;; Move function:
-   (lambda (source-abs-name target-abs-name) (rename-file source-abs-name target-abs-name t)))
+   (lambda (source-abs-name target-abs-name)
+     (rename-file source-abs-name target-abs-name t)
+     (dir-treeview-update-buffer-file-name source-abs-name target-abs-name)))
   (treeview-unselect-all-nodes))
 
 (defun dir-treeview-delete-selected-files ()
