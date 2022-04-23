@@ -789,7 +789,7 @@ directory is folded or not.  Otherwise, nil (meaning: no control) is returned."
       (if (treeview-node-folded-p node) dir-treeview-folded-dir-control
         dir-treeview-expanded-dir-control)))
 
-(defun dir-treeview--query-tester-value-list (node tester-value-list)
+(defun dir-treeview-query-tester-value-list (node tester-value-list)
   "Return the value for NODE according TESTER-VALUE-LIST."
   (let ( (filename (treeview-get-node-prop node 'absolute-name))
          (value nil) )
@@ -827,7 +827,7 @@ icons directly, but as strings containing the hexadecimal character codes."
   (let ( (char-code
           (if (dir-treeview-directory-p node)
               (if (treeview-node-folded-p node) dir-treeview-folded-dir-icon dir-treeview-expanded-dir-icon)
-            (or (dir-treeview--query-tester-value-list node dir-treeview-special-icons) dir-treeview-default-icon))) )
+            (or (dir-treeview-query-tester-value-list node dir-treeview-special-icons) dir-treeview-default-icon))) )
     (if (treeview-not-nil-or-empty-string-p char-code) (dir-treeview-char-code-to-symbol char-code))))
 
 (defun dir-treeview-get-label-margin-left (node)
@@ -852,7 +852,7 @@ If `dir-treeview-icon-faces' specifies an icon face for NODE, that face is
 returned.  Otherwise, `dir-treeview-default-icon-face' is returned.
 
 See also the documentation of `dir-treeview-icon-faces' for more information"
-  (or (dir-treeview--query-tester-value-list node dir-treeview-icon-faces) 'dir-treeview-default-icon-face))
+  (or (dir-treeview-query-tester-value-list node dir-treeview-icon-faces) 'dir-treeview-default-icon-face))
 
 (defun dir-treeview-get-control-keymap (node)
   "Return the keymap for the control symbol of NODE.
@@ -869,7 +869,7 @@ The keymap is defined by `dir-treeview-label-keymap'."
   "Return the face for the label of NODE.
 The face is determined by `dir-treeview-filename-faces'.  See the documentation
 of `dir-treeview-filename-faces' for more information."
-    (or (dir-treeview--query-tester-value-list node dir-treeview-filename-faces) 'dir-treeview-default-filename-face))
+    (or (dir-treeview-query-tester-value-list node dir-treeview-filename-faces) 'dir-treeview-default-filename-face))
 
 (defun dir-treeview-default-accept-filename (filename)
   "Return non-nil if FILENAME should be shown in the tree, otherwise nil.
