@@ -603,6 +603,21 @@ if the (final) input is \"y\" and nil if the final input is \"n\"."
       (setq input (read-event (concat "Please answer y or n - " prompt))))
     (equal input ?y)))
 
+(defun dir-treeview-user-confirm-y-n-Y-N (prompt)
+  "Ask the user for confirmation in the minibuffer.
+Similar to `dir-treeview-user-confirm-y-or-n', but the user can in addition
+type \"Y\" or \"N\", meaning \"yes to all\" or \"no to all\", respectively.
+This is useful if the same yes-no-question is asked for a series of items, and
+the user wants to give the same answer to all of them.  A typical example would
+be the deletion of a series of files.
+Unlike `dir-treeview-user-confirm-y-or-n', this function returns the answer as
+a character (\"y\", \"n\", \"Y\", or \"N\")."
+  (interactive)
+  (let ( (input (read-event (concat prompt "(y, n, Y [for y to all], N [for n to all]) "))) )
+    (while (not (member input '(?y ?n ?Y ?N)))
+      (setq input (read-event (concat "Please answer y, n, Y, or N - " prompt))))
+    input))
+
 (defun dir-treeview-read-file-name (prompt &optional dir default-filename mustmatch initial predicate)
   "Read a filename, either in the minibuffer or a graphical dialog.
 The arguments PROMPT, DIR, DEFAULT-FILENAME, MUSTMATCH, INITIAL, and PREDICATE
@@ -1537,14 +1552,72 @@ corresponds to a non-directory.  If there is no node at point, does nothing."
     (when node
       (if (dir-treeview-directory-p node) (dir-treeview-copy-dir node) (dir-treeview-copy-file node)))))
 
+(defun dir-treeview-kill-buffer (buffer)
+  "Kill buffer BUFFER.
+Same as (`kill-buffer' BUFFER), but marks BUFFER as unmodified before.
+This suppresses the build-in confirmation question which would otherwise occur
+if the buffer was modified.  Can be used if the user already confirmed to kill
+the buffer by means of one of fir-treeview's own confirmation dialogs (e.g.,
+`dir-treeview-user-confirm-y-or-n'."
+  (with-current-buffer buffer (not-modified))
+  (kill-buffer buffer))
+
+(defun dir-treeview-get-buffers-for-prefix-path (prefix)
+  "Return a list of all buffers whose filename starts with the path PREFIX.
+A buffer is included in the list if, and oly if, one of the following conditions
+hold true:
+(1) its filename equals PREFIX,
+(2) its filename equals PREFIX + DIR_SEP,
+(3) its filename starts with PREFIX + DIR_SEP,
+where DIR_SEP is the platform-specific directory separator (e.g., \"/\" on Linux
+or Unix).
+This is an auxiliary function for updating buffer filenames after a file has been
+renamed, or for cleaning up orphand buffers after a file or directory has been
+ deleted."
+  (let ( (buffers ()) (prefix-as-dir (directory-file-name prefix)) )
+    (dolist (buffer (buffer-list))
+      (let ( (filename (buffer-file-name buffer)) )
+        (when (and filename (or (string-prefix-p prefix-as-dir filename) (string-equal prefix filename)))
+          (setq buffers (cons buffer buffers)))))
+    buffers))
+
 (defun dir-treeview-update-buffer-file-name (old-filename new-filename)
-  "If a buffer with the file name OLD-FILENAME exists, change it to NEW-FILENAME.
-If a buffer exists that visits OLD-FILENAME, the file name of the buffer is
-changed to NEW-FILENAME so the buffer visits that file now.  This auxiliary
-function is used to update the buffer file name when a file is moved or renamed and a
-buffer is visiting the file."
-  (let ( (buffer (get-file-buffer old-filename)) )
-    (when buffer (with-current-buffer buffer (set-visited-file-name new-filename nil t)) )) )
+  "Update the filename of all buffers affected by renaming a file or directory.
+OLD-FILENAME and NEW-FILENAME are the old and new name of the file, respectively.
+They must be absolute paths.  If the renamed file is a normal file, not a
+directory, the only buffer affected by the renaming is the buffer visiting that
+file.  But if the file is directory, all buffers visiting files in descendant
+directories are also affected.  For all affected buffers, the buffer file name
+is updated (OLD-FILENAME replaced by NEW-FILENAME)."
+  (let ( (offset (length old-filename)) )
+  (dolist (buffer (dir-treeview-get-buffers-for-prefix-path old-filename))
+    (with-current-buffer buffer
+      (set-visited-file-name (concat new-filename (substring (buffer-file-name) offset)) nil t)) )) )
+
+(defun dir-treeview-kill-orphand-buffers (filename)
+  "Kill all buffers that became orphand due to the deletion of file FILENAME.
+An orphand buffer is a buffer that visits a deleted file.  If FILENAME is a
+normal file, not a directory, the only buffer affected by the deletion of
+FILENAME is the buffer visiting FILENAME.  But if FILENAME is a directory, all
+buffers visiting files in descendant directories are also affected.
+The user is asked for confirmation for each file, but can choose to confirm or
+deny for all remaining files in each question
+(see `dir-treeview-user-confirm-y-n-Y-N')."
+  (let ( (buffers (dir-treeview-get-buffers-for-prefix-path filename)) )
+    ;; If there is more than one buffer, iterate through all of them. In the confirmation dialog,
+    ;; offer the user "yes for all" and "no to all" (in addition to standard "yes" and "no).
+    (if (> (length buffers) 1)
+        (let ( (choice nil) )
+          (dolist (buffer buffers)
+            (unless (member choice '(?Y ?N))
+              (setq choice (dir-treeview-user-confirm-y-n-Y-N (format "Kill buffer visiting %s? " (buffer-file-name buffer)))))
+            (when (member choice '(?y ?Y))
+              (dir-treeview-kill-buffer buffer)) ))
+      ;; If there is only one buffer, show the standard confirmation dialog (only "yes and "no")
+      (when (= (length buffers) 1)
+        (let ( (buffer (car buffers)) )
+          (when (dir-treeview-user-confirm-y-or-n (format "Kill buffer visiting %s? " (buffer-file-name buffer)))
+            (dir-treeview-kill-buffer buffer)) )) )) )
 
 (defun dir-treeview-rename-file (node)
   "Rename the file or directory corresponding to NODE.
@@ -1585,7 +1658,8 @@ to delete directories."
     (when (dir-treeview-user-confirm-y-or-n (concat "Delete " (dir-treeview-local-filename filename) "? "))
       (delete-file filename)
       ;; If file watch is enabled, we let its callback function do the refreshing
-      (unless dir-treeview-file-watch-enabled (treeview-refresh-node (treeview-get-node-parent node))) )))
+      (unless dir-treeview-file-watch-enabled (treeview-refresh-node (treeview-get-node-parent node)))
+      (dir-treeview-kill-orphand-buffers filename) )))
 
 (defun dir-treeview-delete-dir (node)
   "Recursively delete the directory corresponding to NODE.
@@ -1594,7 +1668,8 @@ Asks for confirmation in the minibuffer."
     (when (dir-treeview-user-confirm-y-or-n (concat "Recursively delete " (dir-treeview-local-filename dir) " and all its contents? "))
       (delete-directory dir t)
       ;; If file watch is enabled, we let its callback function do the refreshing
-      (unless dir-treeview-file-watch-enabled (treeview-refresh-node (treeview-get-node-parent node))) )))
+      (unless dir-treeview-file-watch-enabled (treeview-refresh-node (treeview-get-node-parent node)))
+      (dir-treeview-kill-orphand-buffers dir) )))
 
 (defun dir-treeview-delete-file-or-dir-at-point ()
   "Delete the file or directory corresponding to the node at point.
