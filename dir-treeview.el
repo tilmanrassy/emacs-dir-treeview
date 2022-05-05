@@ -41,6 +41,14 @@
 (require 'treeview)
 (require 'filenotify)
 
+(defconst dir-treeview-version "1.2.0"
+  "Version of the dir-treeview package.")
+
+(defun dir-treeview-show-version ()
+  "Display the dir-treeview version in the echo area."
+  (interactive)
+  (message "%s" dir-treeview-version))
+
 (defgroup dir-treeview nil
   "Customizaton group for dir-treeview."
   :group 'emacs)
@@ -610,6 +618,7 @@ type \"Y\" or \"N\", meaning \"yes to all\" or \"no to all\", respectively.
 This is useful if the same yes-no-question is asked for a series of items, and
 the user wants to give the same answer to all of them.  A typical example would
 be the deletion of a series of files.
+As with `dir-treeview-user-confirm-y-or-n', PROMPT is the prompt.
 Unlike `dir-treeview-user-confirm-y-or-n', this function returns the answer as
 a character (\"y\", \"n\", \"Y\", or \"N\")."
   (interactive)
@@ -1566,9 +1575,9 @@ the buffer by means of one of fir-treeview's own confirmation dialogs (e.g.,
   "Return a list of all buffers whose filename starts with the path PREFIX.
 A buffer is included in the list if, and oly if, one of the following conditions
 hold true:
-(1) its filename equals PREFIX,
-(2) its filename equals PREFIX + DIR_SEP,
-(3) its filename starts with PREFIX + DIR_SEP,
+  (1) its filename equals PREFIX,
+  (2) its filename equals PREFIX + DIR_SEP,
+  (3) its filename starts with PREFIX + DIR_SEP,
 where DIR_SEP is the platform-specific directory separator (e.g., \"/\" on Linux
 or Unix).
 This is an auxiliary function for updating buffer filenames after a file has been
@@ -1583,12 +1592,12 @@ renamed, or for cleaning up orphand buffers after a file or directory has been
 
 (defun dir-treeview-update-buffer-file-name (old-filename new-filename)
   "Update the filename of all buffers affected by renaming a file or directory.
-OLD-FILENAME and NEW-FILENAME are the old and new name of the file, respectively.
-They must be absolute paths.  If the renamed file is a normal file, not a
-directory, the only buffer affected by the renaming is the buffer visiting that
-file.  But if the file is directory, all buffers visiting files in descendant
-directories are also affected.  For all affected buffers, the buffer file name
-is updated (OLD-FILENAME replaced by NEW-FILENAME)."
+OLD-FILENAME and NEW-FILENAME are the old and new name of the file,
+respectively.  They must be absolute paths.  If the renamed file is a normal
+file, not a directory, the only buffer affected by the renaming is the buffer
+visiting that file.  But if the file is directory, all buffers visiting files
+in descendant directories are also affected.  For all affected buffers, the
+buffer file name is updated (OLD-FILENAME replaced by NEW-FILENAME)."
   (let ( (offset (length old-filename)) )
   (dolist (buffer (dir-treeview-get-buffers-for-prefix-path old-filename))
     (with-current-buffer buffer
@@ -1601,8 +1610,8 @@ normal file, not a directory, the only buffer affected by the deletion of
 FILENAME is the buffer visiting FILENAME.  But if FILENAME is a directory, all
 buffers visiting files in descendant directories are also affected.
 The user is asked for confirmation for each file, but can choose to confirm or
-deny for all remaining files in each question
-(see `dir-treeview-user-confirm-y-n-Y-N')."
+deny for all remaining files in each question (see
+`dir-treeview-user-confirm-y-n-Y-N')."
   (let ( (buffers (dir-treeview-get-buffers-for-prefix-path filename)) )
     ;; If there is more than one buffer, iterate through all of them. In the confirmation dialog,
     ;; offer the user "yes for all" and "no to all" (in addition to standard "yes" and "no).
@@ -1831,10 +1840,10 @@ a non-directory.  If there is no node at point, does nothing."
 
 (defun dir-treeview-format-file-size (byte-count)
   "Return a human-readable from of BYTE-COUNT.
-The latter should by an integer representing a number of bytes.  Returns a string
-describing this value in a suitable unit; one of G (gigabytes), M (megabytes), K
-(kilobytes) or bytes.  Examples: 5.23G, 12.05K, 756.  If unit is bytes, no unit
-symbol is added."
+The latter should by an integer representing a number of bytes.  Returns a
+string describing this value in a suitable unit; one of G (gigabytes),
+M (megabytes), K (kilobytes) or bytes.  Examples: 5.23G, 12.05K, 756.
+If unit is bytes, no unit symbol is added."
   (if (< byte-count 1024) (format "%d" byte-count)
     (let ( (unit "") (size (float byte-count)) )
       (setq unit "K" size (/ size 1024))
@@ -1859,8 +1868,9 @@ strings occurring in cons cells are given the face specified in the cons cell."
 
 (defun dir-treeview-create-file-info-string (filename)
   "Create a string describing the file attributes of FILENAME.
-The string is similar to the output of the Linux command ls -l.  It contains
-the file modes (e.g., -rw-r--r-), owner. group, size, and last modification time."
+The string is similar to the output of the Linux command ls -l.  It contains the
+file modes (for examlple, -rw-r--r-), owner, group, size, and last modification
+time."
   (let ( (attribs (file-attributes filename 'string)) )
     (when attribs
       (dir-treeview-join-strings
@@ -1875,7 +1885,7 @@ the file modes (e.g., -rw-r--r-), owner. group, size, and last modification time
 (defun dir-treeview-show-file-info (filename)
   "Show the file attributes of FILENAME in the echo area.
 Calls `dir-treeview-create-file-info-string' with FILENAME as argument and
-displayes the result in the echo area "
+displayes the result in the echo area."
   (let ( (file-info (dir-treeview-create-file-info-string filename)) )
     (when file-info (message "%s" file-info)) ))
 
