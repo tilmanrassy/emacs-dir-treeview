@@ -291,7 +291,7 @@ You can now add or remove keys or change the Lisp commands bound the them.
 Troubleshooting
 ---------------
 
-If the tree seems to be incorrect, outdated or broken, hit the `=` key. This runs the command `dir-treeview-refresh-tree`, which recreates the
+If the tree seems to be incorrect, outdated or broken, hit the `=` key. This runs the command `treeview-refresh-tree`, which recreates the
 whole tree and (hopefully) fixes the problems.
 
 
