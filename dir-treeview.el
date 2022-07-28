@@ -467,12 +467,12 @@ See `dir-treeview-log-file-notify-event' for more information."
   :group 'dir-treeview
   :type 'string)
 
-(defvar dir-treeview-update-theme-after-custom-set t
+(defvar dir-treeview-update-theme-after-set t
   "Whether customizing `dir-treeview-theme' applies the new theme immediately.
 This is an internal auxiliary variable used by the special :set function of the
 customizable variable `dir-treeview-theme'.  If non-nil, then, whenever
 `dir-treeview-theme' is changed via the customizaton system of Emacs, the new
-theme is immedatly loaded and applied to all Dir Treeview buffers.")
+theme is immedately loaded and applied to all Dir Treeview buffers.")
 
 (defcustom dir-treeview-theme
  "None"
@@ -480,19 +480,13 @@ theme is immedatly loaded and applied to all Dir Treeview buffers.")
 
 This customizable variable has a special :set function.  It first sets the value
 as usual, and then loads and applies the new theme to all Dir Treeview buffers.
-Thus, the new theme becomes active immedatly.  It is save to set the variable
-directly in Lisp code; the only thing to remember is that the theme is not
-automatically loaded and applied, then.  If you want the latter as well, call
-(`dir-treeview-load-theme' `dir-treeview-theme') after setting
-`dir-treeview-theme'."
+Thus, the new theme becomes active immedatly.  The :set function essecntially
+calls the function `dir-treeview-set-theme' with the new theme name as argument.
+If you want to set `dir-treeview-theme' by hand from Lisp code, you can use
+this function for that purpose. It can also be called interactively."
  :group 'dir-treeview
  :type '(choice (const :tag "None" "None"))
- :set #'(lambda (variable value)
-          (custom-set-default variable value)
-          (when dir-treeview-update-theme-after-custom-set
-            (setq dir-treeview-update-theme-after-custom-set nil)
-            (dir-treeview-load-theme value)
-            (setq dir-treeview-update-theme-after-custom-set t)))
+ :set #'(lambda (variable value) (dir-treeview-set-theme value))
  :initialize 'custom-initialize-default)
 
 (defun dir-treeview-custom-update-themes ()
@@ -2156,12 +2150,13 @@ Usually, there should be at most one enabled Dir Treeview theme at a time."
   "Return the display name THEME.
 THEME must be the name (symbol) of a Dir Treeview theme, thus, a theme symbol
 starting with \"dir-treeview-\".  The display name is the symbol name without the
-prefix \"dir-treeview-\" and with the first letter capitalized.  It's a string.
-For example, the display name of the theme 'dir-treeview-hortensia' is
-\"Hortensia\"." 
+prefix \"dir-treeview-\", dashes ('-') replaced by spaces, and all words
+capitalized.  It's a string.
+For example, the display name of 'dir-treeview-hortensia' is \"Hortensia\".
+That of 'dir-treeview-hortensia-light' is \"Hortensia Light\"." 
   (let ( (prefix "dir-treeview-") (theme-name (symbol-name theme)) )
     (if (string-prefix-p prefix theme-name)
-        (capitalize (substring theme-name (length prefix)))
+        (capitalize (subst-char-in-string ?- ?\s (substring theme-name (length prefix))))
       (error "Not a dir-treeview theme: %s" theme-name) )) )
 
 (defun dir-treeview-get-theme-display-names ()
@@ -2175,9 +2170,11 @@ See also `dir-treeview-get-theme-display-name'."
 (defun dir-treeview-get-theme-for-display-name (name)
   "Return the Dir Treeview theme for the display name NAME, as a symbol.
 See `dir-treeview-get-theme-display-name' for Dir Treeview themes and thier display names."
-  (intern (concat "dir-treeview-" (downcase name))))
+  (let ( (theme-name (concat "dir-treeview-" (replace-regexp-in-string "\\s-+" "-" (downcase name)))) )
+    (unless (string-match-p "^[a-z0-9-]+$" theme-name) (error "Invalid dir-treeview theme name: %s" name))
+    (intern theme-name)))
 
-(defun dir-treeview-load-theme (name)
+(defun dir-treeview-set-theme (name)
   "Load and apply the Dir Treeview theme with the display name NAME.
 A Dir Treeview theme is a theme whose symbol name starts with 'dir-treeview-'.
 Its display name is the part of the symbol name after the leading \"dir-treeview-\"
@@ -2186,13 +2183,17 @@ theme 'dir-treeview-hortensia' is laoded.
 Before loading, any currently enabled Dir Treeview theme is disabled.
 After loading, the theme is enabled and applied to all Dir Treeview buffers.
 It is also allowd that NAME is \"None\", in which case no theme is used, and Dir
-Treeview is displayed in the default, themeless way.."
+Treeview is displayed in the default, themeless way."
   (interactive (list (completing-read "Load Dir Treeview theme: " (dir-treeview-get-theme-display-names))))
-  (dir-treeview-disable-themes)
-  (unless (string-equal name "None")
-    (load-theme (dir-treeview-get-theme-for-display-name name)))
-  (dolist (buffer (dir-treeview-get-buffers))
-    (with-current-buffer buffer (treeview-refresh-tree))))
+  (setq dir-treeview-theme name)
+  (when dir-treeview-update-theme-after-set
+    (setq dir-treeview-update-theme-after-set nil)
+    (dir-treeview-disable-themes)
+    (unless (string-equal name "None")
+      (load-theme (dir-treeview-get-theme-for-display-name name)))
+    (dolist (buffer (dir-treeview-get-buffers))
+      (with-current-buffer buffer (treeview-refresh-tree)))
+    (setq dir-treeview-update-theme-after-set t)))
 
 (defun dir-treeview-create-theme-menu ()
   "Create the menu for selecting the theme."
@@ -2202,7 +2203,9 @@ Treeview is displayed in the default, themeless way.."
     (dolist (name (sort (dir-treeview-get-theme-display-names) 'string-greaterp))
       (define-key menu
         (vector (intern (downcase name)))
-        (list 'menu-item name `(lambda () (interactive)  (dir-treeview-load-theme ,name)))) )
+        (list 'menu-item
+              (if (string-equal name dir-treeview-theme) (concat name " ● ") name)
+              `(lambda () (interactive) (dir-treeview-set-theme ,name)))) )
     menu))
 
 (defun dir-treeview-create-local-keymap ()
