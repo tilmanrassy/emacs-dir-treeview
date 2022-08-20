@@ -3,15 +3,15 @@ emacs-dir-treeview
 
 Emacs file system navigator and simple file manager.
 
-This document describes v1.1.0 of emacs-dir-treeview.
+This document describes v1.3.0 of emacs-dir-treeview.
 
 * [Overview](#overview)
 * [Screenshots](#screenshots)
 * [Installation](#installation)
   * [From MELPA](#from-melpa)
   * [Manual installation](#manual-installation)
+  * [Installation of the "pleasant" theme](#installation-of-the-pleasant-theme)
   * [Post-installation setup](#post-installation-setup)
-  * [Setup of the "pleasant" theme](#setup-of-the-pleasant-theme)
 * [Usage](#usage)
   * [Start](#start)
   * [Current vs. side window](#current-vs-side-window)
@@ -19,6 +19,8 @@ This document describes v1.1.0 of emacs-dir-treeview.
   * [The context menu](#the-context-menu)
   * [Selection](#selection)
   * [Key bindings](#key-bindings)
+* [Themes](#themes)
+  * [Enabling themes](#enabling-themes)
 * [File notifications](#file-notifications)
 * [Customization](#customization)
 * [Troubleshooting](#troubleshooting)
@@ -81,6 +83,18 @@ file. Add the following to your `init.el`:
     (require 'dir-treeview)
 ```
 
+
+### Installation of the "pleasant" theme
+
+Make sure the "Font Awesome" icon font is installed on your computer.
+
+If you installed dir-treeview from MELPA, there is nothing else to do. If you installed dir-treeview manually, copy
+the file `dir-treeview-pleasant-theme.el` either to somewhere in the theme load path (cf. Lisp variable `custom-theme-load-path`)
+or to somewhere in the usual load path (cf. Lisp variable `load-path`).
+
+To enable the theme, see [Enabling themes](#enabling-themes).
+
+
 ### Post-installation setup
 
 Bind a key, for example F9, to the command `dir-treeview` by adding the following
@@ -92,26 +106,7 @@ to your `init.el`:
 
 If you installed dir-treeview manually, this statement must occur after the `(require 'dir-treeview)` statement above.
 
-### Setup of the "pleasant" theme
-
-Make sure the "Font Awesome" icon font is installed on your computer.
-
-If you installed dir-treeview manually, copy the file `dir-treeview-pleasant-theme.el` either to somewhere in the theme load path
-(cf. Lisp variable `custom-theme-load-path`) or to somewhere in the usual load path (cf. Lisp variable `load-path`).
-
-Add the following to your `init.el`:
-
-```elisp
-    (load-theme 'dir-treeview-pleasant t)
-```
-
-If you installed dir-treeview manually, this statement must occur after the `(require 'dir-treeview)` statement above.
-
-For moe information about themes, see
-[Custom Themes](https://www.gnu.org/software/emacs/manual/html_node/emacs/Custom-Themes.html#Custom-Themes "Custom Themes - GNU Emacs Manual")
-in the Emacs Manual.
-
-
+    
 Usage
 -----
 
@@ -243,6 +238,52 @@ Key           | Action
 `e`           | Open context menu
 `<C-mouse-1>` | Toggle selection
 `<S-mouse-1>` | Select successive files (cf. [Selecting and unselecting files](#selecting-and-unselecting-files))
+
+
+Themes
+------
+
+### Enabling themes
+
+The way themes are enabled has changed in version 1.3.0. The old method (prior to version 1.3.0) should still work, but
+it is recommended to use the new method. The new method comes in two variants:
+
+**Variant 1: By the menu bar.** In a dir-treeview buffer, the menu bar contains an additional menu "Dir-Treeview". It
+contains a submenu "Theme" which allows you to choose the theme. The theme is applied immediately. Note that the new
+theme is only set for the current Emacs session. To save it for future sessions, choose "Save options" from the 
+"Dir-Treeview" menu. Here is a screenshot:
+
+![Theme menu](screenshots/080_theme_menu.png "Theme menu")
+
+**Variant 2: By command in the minibuffer.** The is the more "classical" method. It also works in a non-graphical environment.
+Type
+```
+    M-x dir-treeview-load-theme <return>
+```
+and enter the theme name. You are assisted by `tab` completion. After finishing with `return`, the new theme is applied
+immediately. As above, the new theme is only set for the current Emacs session. To save it for future sessions, type:
+```
+    M-x dir-treeview-save-theme <return>
+```
+
+**Old method (prior to v1.3.0): By load-theme in Emacs init file.** Dir-treeview themes are based on the Emacs theme framework (cf.
+[Custom Themes](https://www.gnu.org/software/emacs/manual/html_node/emacs/Custom-Themes.html "Custom Themes - GNU Emacs Manual")
+in the Emacs Manual). They are special Emacs themes. As such, they can be loaded and enabled by the `load-theme` command.
+`load-theme` expects the Lisp symbol of the theme as first argument. You get the Lisp symbol from the theme name as follows: convert
+everything to lower case, replace whitespaces by dashes (consecutive whitespaces by a single dash), and add `dir-treeview-`. For example,
+if the theme name is "Foo Bar 2", the Lisp symbol is `dir-treeview-foo-bar-2`. You should place the `load-theme` command in your `init.el`
+file. For example, to enable the "Pleasant" theme, add the following to your `init.el`:
+
+```elisp
+    (load-theme 'dir-treeview-pleasant t)
+```
+
+If you installed dir-treeview manually, this statement must occur after the `(require 'dir-treeview)`
+(cf. [Manual installation](#manual-installation)).
+
+If you use the new method, the theme saved for future sessions is stored in the file `dir-treeview-theme.txt` in the user Emacs directory
+(usually `~/.emacs.d`). You'll hardly need to access this file directly.
+
 
 
 File notifications
