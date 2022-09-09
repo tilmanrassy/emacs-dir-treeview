@@ -4,7 +4,7 @@
 
 ;; Author: Tilman Rassy <tilman.rassy@googlemail.com>
 ;; URL: https://github.com/tilmanrassy/emacs-dir-treeview
-;; Version: 1.3.0
+;; Version: 1.3.1
 ;; Package-Requires: ((emacs "24.4") (treeview "1.1.0"))
 ;; Keywords: tools, convenience, files
 
@@ -41,7 +41,7 @@
 (require 'treeview)
 (require 'filenotify)
 
-(defconst dir-treeview-version "1.3.0"
+(defconst dir-treeview-version "1.3.1"
   "Version of the dir-treeview package.")
 
 (defun dir-treeview-show-version ()
@@ -58,13 +58,6 @@ file path separator (slash on Linux and Unix)."
     (dolist (part (cdr components))
       (setq path (concat (file-name-as-directory path) part)))
     path))
-
-(defun dir-treeview-create-default-icon-dir-list ()
-  "Create and return the default value of `dir-treeview-icon-dir-list'."
-  (let ( (dir-list (list (dir-treeview-join-path user-emacs-directory "icons" "dir-treeview"))) )
-    (when load-file-name
-      (setq dir-list (cons (dir-treeview-join-path (file-name-directory load-file-name) "icons") dir-list)))
-    dir-list))
 
 (defgroup dir-treeview nil
   "Customizaton group for dir-treeview.
@@ -119,7 +112,8 @@ save the theme, use the menu bar or \[treeview-load-theme] and
   :group 'dir-treeview
   :type 'string)
 
-(defcustom dir-treeview-icon-dir-list (dir-treeview-create-default-icon-dir-list)
+(defcustom dir-treeview-icon-dir-list
+  (list (dir-treeview-join-path user-emacs-directory "icons" "dir-treeview"))
   "List of directories to search icons."
   :group 'dir-treeview
   :type '(repeat directory))
@@ -856,11 +850,18 @@ directory is folded or not.  Otherwise, nil (meaning: no control) is returned."
 
 (defun dir-treeview-resolve-icon-image-path (icon-path)
   "Return the absolute path of the icon with the relative path ICON-PATH.
-For each directory in `dir-treeview-icon-dir-list', it is checked if the file
-with the path ICON-PATH relative to that directory exists.  The absolute path of
-the first existing file is returned.  If no existong file is found, nil is
-returned."
+
+For each directory in the effective icon directory list (see below), it is
+checked if the file with the path ICON-PATH relative to that directory exists.
+The absolute path of the first existing file is returned.  If no existing file
+is found, nil is returned.
+
+The effective icon directory list is `dir-treeview-icon-dir-list' with the value
+of `dir-treeview-icon-dir-by-theme' added at the front provided the latter is
+non-nil.  This guarantees that icons installed with the current theme in a
+package are found and take precedence over other icons."
   (let ( (icon-path-abs (when (file-name-absolute-p icon-path) icon-path)) (dirs dir-treeview-icon-dir-list) )
+    (when dir-treeview-icon-dir-by-theme (setq dirs (cons dir-treeview-icon-dir-by-theme dirs)))
     (while (and (not (and icon-path-abs (file-exists-p icon-path-abs))) dirs)
       (setq icon-path-abs (dir-treeview-join-path (car dirs) icon-path) dirs (cdr dirs)))
     icon-path-abs))
@@ -2151,6 +2152,42 @@ See `dir-treeview-get-theme-display-name' for Dir Treeview themes and thier disp
     (unless (string-match-p "^[a-z0-9-]+$" theme-name) (error "Invalid dir-treeview theme name: %s" name))
     (intern theme-name)))
 
+(defun dir-treeview-resolve-theme-path-list ()
+  "Resolve special items in `custom-theme-load-path' and remove non-directories.
+The symbols t and 'custom-theme-directory are replaced by the respective real
+paths.  Paths that are not existong directories are removed.  The resulting list
+is returned.
+This is essentially a copy of `custom-theme--load-path'.  The latter is an
+internal function of the \"custom\" library, so we shouldn't use it here."
+  (let (theme-path-list)
+    (dolist (item custom-theme-load-path)
+      (cond ((eq item 'custom-theme-directory) (setq item custom-theme-directory))
+            ((eq item t) (setq item (expand-file-name "themes" data-directory))))
+      (when (file-directory-p item) (push item theme-path-list)))
+    (nreverse theme-path-list)))
+
+(defun dir-treeview-resolve-theme-file (theme)
+  "Return the absolute path of the file defining THEME.
+THEME should be the symbol of a theme.  Searches the theme file in the
+directories of `custom-theme-load-path' and returns its absolute path
+if found, otherwise nil."
+  (locate-file (concat (symbol-name theme) "-theme")
+               (dir-treeview-resolve-theme-path-list)
+               '(".el" ".elc")))
+
+(defun dir-treeview-find-icon-dir-by-theme (theme)
+  "If the directory of the THEME file contains an icon subdirectory, return it.
+If the directory containing the .el or.elc file defining THEME contains a
+subdirectory named \"icons\", the absolue path of that subdirectory is returned.
+If no such subdirectory exists, or if the theme file doesn't exist, returns nil."
+  (let ( (theme-file (dir-treeview-resolve-theme-file theme)) )
+    (when theme-file
+      (let ( (icon-dir (concat (file-name-as-directory (file-name-directory theme-file)) "icons")) )
+        (when (file-directory-p icon-dir) icon-dir)))))
+
+(defvar dir-treeview-icon-dir-by-theme nil
+  "Stores the icon directory found by `dir-treeview-find-icon-dir-by-theme'.")
+
 (defun dir-treeview-load-theme (name &optional no-confirm)
   "Load and apply the Dir Treeview theme with the display name NAME.
 
@@ -2169,7 +2206,9 @@ Treeview is displayed in the default, themeless way."
   (interactive (list (completing-read "Load Dir Treeview theme: " (dir-treeview-get-themes-display-names)) nil))
   (dir-treeview-disable-themes)
   (unless (string-equal name "None")
-    (load-theme (dir-treeview-get-theme-for-display-name name)))
+    (let ( (theme (dir-treeview-get-theme-for-display-name name)) )
+      (setq dir-treeview-icon-dir-by-theme (dir-treeview-find-icon-dir-by-theme theme))
+      (load-theme (dir-treeview-get-theme-for-display-name name))))
   (dolist (buffer (dir-treeview-get-buffers))
     (with-current-buffer buffer (treeview-refresh-tree))))
 
