@@ -3,7 +3,7 @@ emacs-dir-treeview
 
 Emacs file system navigator and simple file manager.
 
-This document describes v1.3.0 of emacs-dir-treeview.
+This document describes v1.3.1 of emacs-dir-treeview.
 
 * [Overview](#overview)
 * [Screenshots](#screenshots)
