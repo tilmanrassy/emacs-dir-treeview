@@ -10,7 +10,7 @@ This document describes v1.3.1 of emacs-dir-treeview.
 * [Installation](#installation)
   * [From MELPA](#from-melpa)
   * [Manual installation](#manual-installation)
-  * [Installation of the "pleasant" theme](#installation-of-the-pleasant-theme)
+  * [Installation of the "Pleasant" theme](#installation-of-the-pleasant-theme)
   * [Post-installation setup](#post-installation-setup)
 * [Usage](#usage)
   * [Start](#start)
@@ -41,14 +41,15 @@ Overview
 * Supports file notifications
 * Highly customizable
 * Themable
-* Ships with one theme called "pleasant" using Font Awesome icons
+* Ships with a theme called "Pleasant" using Font Awesome icons
+* More themes can be found at [emacs-dir-treeview-themes](https://github.com/tilmanrassy/emacs-dir-treeview-themes)
 
 
 Screenshots
 -----------
 
-#### Theme 'pleasant'
-![Theme 'pleasant'](screenshots/010_with_pleasant_theme.png "Theme 'pleasant'")
+#### Theme 'Pleasant'
+![Theme 'pleasant'](screenshots/010_with_pleasant_theme.png "Theme 'Pleasant'")
 
 #### Context dialog
 ![Context dialog](screenshots/020_with_pleasant_theme_and_context_dialog.png "Context dialog")
@@ -84,7 +85,7 @@ file. Add the following to your `init.el`:
 ```
 
 
-### Installation of the "pleasant" theme
+### Installation of the "Pleasant" theme
 
 Make sure the "Font Awesome" icon font is installed on your computer.
 
