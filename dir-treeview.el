@@ -4,7 +4,7 @@
 
 ;; Author: Tilman Rassy <tilman.rassy@googlemail.com>
 ;; URL: https://github.com/tilmanrassy/emacs-dir-treeview
-;; Version: 1.3.1
+;; Version: 1.3.2
 ;; Package-Requires: ((emacs "24.4") (treeview "1.1.0"))
 ;; Keywords: tools, convenience, files
 
@@ -41,7 +41,7 @@
 (require 'treeview)
 (require 'filenotify)
 
-(defconst dir-treeview-version "1.3.1"
+(defconst dir-treeview-version "1.3.2"
   "Version of the dir-treeview package.")
 
 (defun dir-treeview-show-version ()
@@ -119,23 +119,41 @@ save the theme, use the menu bar or \[treeview-load-theme] and
   :type '(repeat directory))
 
 (defcustom dir-treeview-default-icon ""
-  "Default icon, as hexadecimal numberical code.
-The code specifies the symbol in the choosen icon font."
+  "Default icon, as an icon specifier.
+
+An icon specifier is a string of the form
+
+  \"char HEXCODE\"
+
+or
+
+  \"image PATH\"
+
+The first from defines a symbol in an icon font (like Font Awesome).  HEXCODE is
+the hexadecimal code of the symbol.
+
+The second form defines an image.  PATH is the path of the image file.  The path
+should be relative.  The image file is searched with this relative path in the
+so-called effective icon directory list.  See
+`dir-treeview-resolve-icon-image-path' for the latter."
   :group 'dir-treeview
   :type 'string)
 
 (defcustom dir-treeview-folded-dir-icon ""
-  "Icon for folded directories."
+  "Icon for folded directories, as an icon specifier.
+See `dir-treeview-default-icon' for a description of icon specifiers."
   :group 'dir-treeview
   :type 'string)
 
 (defcustom dir-treeview-expanded-dir-icon ""
-  "Icon for expanded directories."
+  "Icon for expanded directories, as an icon specifier.
+See `dir-treeview-default-icon' for a description of icon specifiers."
   :group 'dir-treeview
   :type 'string)
 
 (defcustom dir-treeview-file-icon ""
-  "Icon for non-directory files."
+  "Icon for non-directory files, as an icon specifier.
+See `dir-treeview-default-icon' for a description of icon specifiers."
   :group 'dir-treeview
   :type 'string)
 
@@ -294,8 +312,9 @@ corresponding file is regarded as a text file, otherwise as a binary file."
   "Icons for special types of files.
 
 This variable is an alist, thus, a list of key-value pairs.  The keys are
-'testers', the values are icons, represented by hexadecimal codes of symbols
-in an icon font.
+testers, the values are icon specifiers.
+
+See `dir-treeview-default-icon' for a description of icon specifiers.
 
 Each tester must be either a regular expression or a Lisp function.  It
 decides whether the corresponding icon should be used for a given node or not.
@@ -870,10 +889,11 @@ package are found and take precedence over other icons."
   "Return the icon symbol for NODE.
 If no icon is specified for NODE, return nil.
 
-If not nil, the return value is a string with one character.  This string is
-displayed in the face returned by `dir-treeview-get-icon-face', which should
-specify an icon font (e.g., Font Awesome), so that the character corresponds
-to the desired icon.
+If not nil, the return value is either a string or an image.  If a string, it
+has exactly one character.  This character is displayed in the face returned by
+`dir-treeview-get-icon-face', which should specify an icon font (e.g., Font
+Awesome), so that the character corresponds to the desired icon.  If an image,
+that image is the icon.
 
 The output of this function is controlled by the customizable variables
 `dir-treeview-folded-dir-icon', `dir-treeview-expanded-dir-icon',
