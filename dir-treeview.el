@@ -134,8 +134,7 @@ the hexadecimal code of the symbol.
 
 The second form defines an image.  PATH is the path of the image file.  The path
 should be relative.  The image file is searched with this relative path in the
-so-called effective icon directory list.  See
-`dir-treeview-resolve-icon-image-path' for the latter."
+directories of `dir-treeview-icon-dir-list'."
   :group 'dir-treeview
   :type 'string)
 
@@ -869,18 +868,11 @@ directory is folded or not.  Otherwise, nil (meaning: no control) is returned."
 
 (defun dir-treeview-resolve-icon-image-path (icon-path)
   "Return the absolute path of the icon with the relative path ICON-PATH.
-
-For each directory in the effective icon directory list (see below), it is
-checked if the file with the path ICON-PATH relative to that directory exists.
-The absolute path of the first existing file is returned.  If no existing file
-is found, nil is returned.
-
-The effective icon directory list is `dir-treeview-icon-dir-list' with the value
-of `dir-treeview-icon-dir-by-theme' added at the front provided the latter is
-non-nil.  This guarantees that icons installed with the current theme in a
-package are found and take precedence over other icons."
+For each directory in `dir-treeview-icon-dir-list', it is checked if the file
+with the path ICON-PATH relative to that directory exists.  The absolute path of
+the first existing file is returned.  If no existing file is found, nil is
+returned."
   (let ( (icon-path-abs (when (file-name-absolute-p icon-path) icon-path)) (dirs dir-treeview-icon-dir-list) )
-    (when dir-treeview-icon-dir-by-theme (setq dirs (cons dir-treeview-icon-dir-by-theme dirs)))
     (while (and (not (and icon-path-abs (file-exists-p icon-path-abs))) dirs)
       (setq icon-path-abs (dir-treeview-join-path (car dirs) icon-path) dirs (cdr dirs)))
     icon-path-abs))
@@ -2105,24 +2097,36 @@ If there is no node at point, does nothing."
   (interactive)
   (customize-group 'dir-treeview))
 
+(defvar dir-treeview-theme-alist '((dir-treeview-pleasant . "Pleasant"))
+  "Alist with all Dir Treeview themes and their display names.
+The keys are theme symbols, the values the coorresponding display names.")
+
 (defun dir-treeview-theme-p (theme)
-  "Return non-nil if THEME is a Dir Treeview theme.
-That is, if THEME is a symbol whose name starts with \"dir-treeview-\".
-Otherwise, resturns nil."
-  (and (symbolp theme) (string-prefix-p "dir-treeview-" (symbol-name theme))))
+  "Return non-nil if THEME is a Dir Treeview theme, otherwise nil.
+Dir Treeview theme are defined by the keys of `dir-treeview-theme-alist'.
+Thus, THEME is considered a Dir Treeview theme if, an only if, it is contained
+in the keys of `dir-treeview-theme-alist'."
+  (and (symbolp theme) (assq theme dir-treeview-theme-alist)))
+
+(defun dir-treeview-register-theme (theme display-name)
+  "Adds THEME with corresponding DISPLAY-NAME to `dir-treeview-theme-alist'.
+If `dir-treeview-theme-alist' already contains an entry for THEME, thew display
+name is updated."
+  (let ( (entry (assq theme dir-treeview-theme-alist)) )
+    (if entry
+        (setcdr entry display-name)
+      (setq dir-treeview-theme-alist (cons (cons theme display-name) dir-treeview-theme-alist)) )))
 
 (defun dir-treeview-get-themes ()
-  "Return a list of all Dir Treeview themes.
-That are all themes whose name starts with \"dir-treeview-\"."
-  (let (themes)
-    (dolist (theme (custom-available-themes))
-      (when (dir-treeview-theme-p theme) (setq themes (cons theme themes))))
-    themes))
+  "Return all Dir Treeview themes, as a list of theme symbols.
+These are all keys of `dir-treeview-theme-alist'."
+  (mapcar 'car dir-treeview-theme-alist))
 
 (defun dir-treeview-get-enabled-themes ()
   "Return a list of all currently enabled Dir Treeview themes.
-That are all currently enabled themes whose name starts with \"dir-treeview-\".
-Usually, there should be at most one enabled Dir Treeview theme at a time."
+Theses are all currently enabled themes for which `dir-treeview-theme-p' returns
+non-nil.  Usually, there should be at most one enabled Dir Treeview theme at a
+time."
   (let (themes)
     (dolist (theme custom-enabled-themes)
       (when (dir-treeview-theme-p theme) (setq themes (cons theme themes))))
@@ -2137,84 +2141,34 @@ Usually, there should be at most one enabled Dir Treeview theme at a time."
 
 (defun dir-treeview-get-theme-display-name (theme)
   "Return the display name of THEME.
-THEME must be the name (symbol) of a Dir Treeview theme, thus, a theme symbol
-starting with \"dir-treeview-\".  The display name is the symbol name without
-the prefix \"dir-treeview-\", dashes ('-') replaced by spaces, and all words
-capitalized.  It's a string.
-For example, the display name of 'dir-treeview-hortensia' is \"Hortensia\".
-That of 'dir-treeview-hortensia-light' is \"Hortensia Light\"."
-  (let ( (prefix "dir-treeview-") (theme-name (symbol-name theme)) )
-    (if (string-prefix-p prefix theme-name)
-        (capitalize (subst-char-in-string ?- ?\s (substring theme-name (length prefix))))
-      (error "Not a dir-treeview theme: %s" theme-name) )) )
+THEME must be a Dir Treeview theme, as a theme symbol.
+See `dir-treeview-theme-p' for the criterion when a theme is a Dir Treeview theme."
+    (let ( (entry (assq theme dir-treeview-theme-alist)) )
+      (if entry (cdr entry)
+        (error "Not a dir-treeview theme: %s" theme) )) )
 
 (defun dir-treeview-get-themes-display-names ()
   "Return the display names of all Dir Treeview themes, as a list.
-A theme is a Dir Treeview theme if, and only if, its symbol name starts with
-\"dir-treeview-\".  The display name is the symbol name without the leading
-\"dir-treeview-\" and the first letter capitalized.
-See also `dir-treeview-get-theme-display-name'."
-  (mapcar 'dir-treeview-get-theme-display-name (dir-treeview-get-themes)))
+These are all values of `dir-treeview-theme-alist'."
+  (mapcar 'cdr dir-treeview-theme-alist))
 
 (defun dir-treeview-get-enabled-themes-display-names ()
   "Return the display names of all enabled Dir Treeview themes, as a list.
 Usually, there should be at most one enabled Dir Treeview theme at a time.
-A theme is a Dir Treeview theme if, and only if, its symbol name starts with
-\"dir-treeview-\".  The display name is the symbol name without the leading
-\"dir-treeview-\" and the first letter capitalized.
-See also `dir-treeview-get-theme-display-name'."
+See `dir-treeview-theme-p' for a definition what a Dir Treeview theme is."
   (mapcar 'dir-treeview-get-theme-display-name (dir-treeview-get-enabled-themes)))
 
-(defun dir-treeview-get-theme-for-display-name (name)
-  "Return the Dir Treeview theme for the display name NAME, as a symbol.
-See `dir-treeview-get-theme-display-name' for Dir Treeview themes and thier display names."
-  (let ( (theme-name (concat "dir-treeview-" (replace-regexp-in-string "\\s-+" "-" (downcase name)))) )
-    (unless (string-match-p "^[a-z0-9-]+$" theme-name) (error "Invalid dir-treeview theme name: %s" name))
-    (intern theme-name)))
-
-(defun dir-treeview-resolve-theme-path-list ()
-  "Resolve special items in `custom-theme-load-path' and remove non-directories.
-The symbols t and 'custom-theme-directory are replaced by the respective real
-paths.  Paths that are not existong directories are removed.  The resulting list
-is returned.
-This is essentially a copy of `custom-theme--load-path'.  The latter is an
-internal function of the \"custom\" library, so we shouldn't use it here."
-  (let (theme-path-list)
-    (dolist (item custom-theme-load-path)
-      (cond ((eq item 'custom-theme-directory) (setq item custom-theme-directory))
-            ((eq item t) (setq item (expand-file-name "themes" data-directory))))
-      (when (file-directory-p item) (push item theme-path-list)))
-    (nreverse theme-path-list)))
-
-(defun dir-treeview-resolve-theme-file (theme)
-  "Return the absolute path of the file defining THEME.
-THEME should be the symbol of a theme.  Searches the theme file in the
-directories of `custom-theme-load-path' and returns its absolute path
-if found, otherwise nil."
-  (locate-file (concat (symbol-name theme) "-theme")
-               (dir-treeview-resolve-theme-path-list)
-               '(".el" ".elc")))
-
-(defun dir-treeview-find-icon-dir-by-theme (theme)
-  "If the directory of the THEME file contains an icon subdirectory, return it.
-If the directory containing the .el or.elc file defining THEME contains a
-subdirectory named \"icons\", the absolue path of that subdirectory is returned.
-If no such subdirectory exists, or if the theme file doesn't exist, returns nil."
-  (let ( (theme-file (dir-treeview-resolve-theme-file theme)) )
-    (when theme-file
-      (let ( (icon-dir (concat (file-name-as-directory (file-name-directory theme-file)) "icons")) )
-        (when (file-directory-p icon-dir) icon-dir)))))
-
-(defvar dir-treeview-icon-dir-by-theme nil
-  "Stores the icon directory found by `dir-treeview-find-icon-dir-by-theme'.")
+(defun dir-treeview-get-theme-for-display-name (display-name)
+  "Return the Dir Treeview theme for DISPLAY-NAME, as a theme symbol.
+This is the key mapped to DISPLAY-NAME in `dir-treeview-theme-alist'.
+If no such key exists, an error is thrown.
+See also `dir-treeview-theme-p' for the term \"Dir Treeview theme\"."
+  (let ( (entry (rassoc display-name dir-treeview-theme-alist)) )
+    (unless entry (error "Not a dir-treeview theme: %s" display-name))
+    (car entry)))
 
 (defun dir-treeview-load-theme (name &optional no-confirm)
   "Load and apply the Dir Treeview theme with the display name NAME.
-
-A Dir Treeview theme is a theme whose symbol name starts with 'dir-treeview-'.
-Its display name is the part of the symbol name after the leading
-\"dir-treeview-\" with the first letter upcased.  It's a string.  Thus, if NAME
-is \"Hortensia\", the theme 'dir-treeview-hortensia' is laoded.
 
 NO-CONFIRM has the same meaning as in `load-theme'.
 
@@ -2222,13 +2176,13 @@ Before loading, any currently enabled Dir Treeview theme is disabled.
 After loading, the theme is enabled and applied to all Dir Treeview buffers.
 
 It is also allowd that NAME is \"None\", in which case no theme is used, and Dir
-Treeview is displayed in the default, themeless way."
+Treeview is displayed in the default, themeless way.
+
+See `dir-treeview-theme-p' for a definition what a Dir Treeview themes is."
   (interactive (list (completing-read "Load Dir Treeview theme: " (dir-treeview-get-themes-display-names)) nil))
   (dir-treeview-disable-themes)
   (unless (string-equal name "None")
-    (let ( (theme (dir-treeview-get-theme-for-display-name name)) )
-      (setq dir-treeview-icon-dir-by-theme (dir-treeview-find-icon-dir-by-theme theme))
-      (load-theme (dir-treeview-get-theme-for-display-name name))))
+    (load-theme (dir-treeview-get-theme-for-display-name name)))
   (dolist (buffer (dir-treeview-get-buffers))
     (with-current-buffer buffer (treeview-refresh-tree))))
 
