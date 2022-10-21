@@ -866,6 +866,20 @@ directory is folded or not.  Otherwise, nil (meaning: no control) is returned."
         (setq tester-value-list (cdr tester-value-list))))
     value))
 
+(defun dir-treeview-add-icon-dir-by-load-file-name ()
+  "Register the icon directory deduced from `load-file-name'.
+If `load-file-name' is set, the path \"LOAD_FILE_DIRECTORY/icons\" is added to
+`dir-treeview-icon-dir-list' provided it is not already contained, where
+LOAD_FILE_DIRECTORY is the dirfectory part of `load-file-name'.
+
+Note that `load-file-name', if set, contains the path of the currently loaded
+Lisp file.  If the latter is part of a package, and the package privides icons
+in an \"icons\" subfolder, this function can be called to add the subfolder
+to `dir-treeview-icon-dir-list' so the icons are found by
+`dir-treeview-resolve-icon-image-path'."
+  (when load-file-name
+    (add-to-list 'dir-treeview-icon-dir-list (concat (file-name-as-directory (file-name-directory load-file-name)) "icons"))))
+
 (defun dir-treeview-resolve-icon-image-path (icon-path)
   "Return the absolute path of the icon with the relative path ICON-PATH.
 For each directory in `dir-treeview-icon-dir-list', it is checked if the file
