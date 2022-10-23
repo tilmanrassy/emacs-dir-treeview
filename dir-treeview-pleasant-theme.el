@@ -65,7 +65,6 @@
  '(dir-treeview-video-face           ((((type graphic)) . (:inherit dir-treeview-default-filename-face)))))
 
 (provide-theme 'dir-treeview-pleasant)
-(dir-treeview-register-theme 'dir-treeview-pleasant "Pleasant")
 (provide 'dir-treeview-pleasant-theme)
 
 ;;; dir-treeview-pleasant-theme.el ends here

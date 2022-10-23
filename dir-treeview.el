@@ -4,7 +4,7 @@
 
 ;; Author: Tilman Rassy <tilman.rassy@googlemail.com>
 ;; URL: https://github.com/tilmanrassy/emacs-dir-treeview
-;; Version: 1.3.2
+;; Version: 1.3.3
 ;; Package-Requires: ((emacs "24.4") (treeview "1.1.1"))
 ;; Keywords: tools, convenience, files
 
@@ -2111,7 +2111,7 @@ If there is no node at point, does nothing."
   (interactive)
   (customize-group 'dir-treeview))
 
-(defvar dir-treeview-theme-alist '((dir-treeview-pleasant . "Pleasant"))
+(defvar dir-treeview-theme-alist nil
   "Alist with all Dir Treeview themes and their display names.
 The keys are theme symbols, the values the coorresponding display names.")
 
@@ -2316,6 +2316,8 @@ When `dir-treeview-theme-file' does not exist, doen't load a theme, but sets
     map))
 
 (add-hook 'kill-buffer-hook #'dir-treeview-shutdown-file-watch-if-last-buffer)
+
+(dir-treeview-register-theme 'dir-treeview-pleasant "Pleasant")
 
 (provide 'dir-treeview)
 
