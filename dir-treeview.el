@@ -878,7 +878,7 @@ If `load-file-name' is set, the path \"LOAD_FILE_DIRECTORY/icons\" is added to
 LOAD_FILE_DIRECTORY is the dirfectory part of `load-file-name'.
 
 Note that `load-file-name', if set, contains the path of the currently loaded
-Lisp file.  If the latter is part of a package, and the package privides icons
+Lisp file.  If the latter is part of a package, and the package provides icons
 in an \"icons\" subfolder, this function can be called to add the subfolder
 to `dir-treeview-icon-dir-list' so the icons are found by
 `dir-treeview-resolve-icon-image-path'."
@@ -2208,6 +2208,19 @@ See `dir-treeview-theme-p' for a definition what a Dir Treeview themes is."
   (dolist (buffer (dir-treeview-get-buffers))
     (with-current-buffer buffer (treeview-refresh-tree))))
 
+(defun dir-treeview-add-theme-dir-by-load-file-name ()
+  "Add the directory of `load-file-name' to `custom-theme-load-path'.
+If `load-file-name' is set and `custom-theme-load-path' is defined, the
+directory part of `load-file-name' is added to `custom-theme-load-path'
+provided it is not already contained.
+
+Note that `load-file-name', if set, contains the path of the currently loaded
+Lisp file.  If the latter is part of a package, and the package provides a
+theme, this function can be called to add the package directory to
+`custom-theme-load-path' so that the theme can be found."
+  (when (and (boundp 'custom-theme-load-path) load-file-name)
+    (add-to-list 'custom-theme-load-path (file-name-as-directory (file-name-directory load-file-name))))
+
 (defun dir-treeview-create-theme-menu (&optional _unused)
   "Create the menu for selecting the theme."
   (let ( (menu (make-sparse-keymap "Theme")) (names-of-enabled (dir-treeview-get-enabled-themes-display-names)) )
@@ -2325,6 +2338,7 @@ When `dir-treeview-theme-file' does not exist, doen't load a theme, but sets
 
 (add-hook 'kill-buffer-hook #'dir-treeview-shutdown-file-watch-if-last-buffer)
 
+(dir-treeview-add-theme-dir-by-load-file-name)
 (dir-treeview-register-theme 'dir-treeview-pleasant "Pleasant")
 
 (provide 'dir-treeview)
