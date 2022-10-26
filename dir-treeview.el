@@ -263,19 +263,22 @@ after the second."
 
 (defcustom dir-treeview-image-regexp
   "\\.\\(?:gif\\|jpe?g\\|png\\|tiff\\|xcf\\|xpm\\|svgz?\\)$"
-  "Regular expression for image filenames.  This is used by `dir-treeview-is-image-p'."
+  "Regular expression for image filenames.
+This is used by `dir-treeview-is-image-p'."
   :group 'dir-treeview
   :type 'regexp)
 
 (defcustom dir-treeview-audio-regexp
   "\\.\\(?:mp3\\|ogg\\|wav\\|mid\\|aiff?\\|webm\\|flac\\)$"
-  "Regular expression for audio filenames.  This is used by `dir-treeview-is-audio-p'."
+  "Regular expression for audio filenames.
+This is used by `dir-treeview-is-audio-p'."
   :group 'dir-treeview
   :type 'regexp)
 
 (defcustom dir-treeview-video-regexp
   "\\.\\(?:mp4\\|mpg\\|mov\\|\\|ogv\\|wmv\\|avi\\|mts\\)$"
-  "Regular expression for video filenames.  This is used by `dir-treeview-is-video-p'."
+  "Regular expression for video filenames.
+This is used by `dir-treeview-is-video-p'."
   :group 'dir-treeview
   :type 'regexp)
 
@@ -286,7 +289,8 @@ after the second."
 
 (defcustom dir-treeview-archive-regexp
   "\\.\\(?:tar\\.gz\\|tgz\\|zip\\)$"
-  "Regular expression for archive filenames.  This is used by `dir-treeview-is-archive-p'."
+  "Regular expression for archive filenames.
+This is used by `dir-treeview-is-archive-p'."
   :group 'dir-treeview
   :type 'regexp)
 
@@ -427,14 +431,15 @@ The tester must be either a regular expression or a Lisp function.  If a regular
 expression, the entry is excluded from the submenu when the absolute filename of
 the node doesn't match the regular expression.  If the tester is a Lisp
 function, the function is called with the absolute filename of the node as
-argument, and the entry is excluded from the submenu if the function returns nil.
+argument, and the entry is excluded from the submenu if the function returns
+nil.
 
 The action may be either an external program or a Lisp function.  An external
 program consists of an executable name and, optionally, a list of parameters.
 If the action is an external program, the corresponding executable is called
 with the specified parameters (if any) and the absolute filename of the node
-added as the last parameter.  If the action is a Lisp function, the function is
-called with one argument, the absolute filename of the node.
+added as the last parameter.  If the action is a Lisp function, the function
+is called with one argument, the absolute filename of the node.
 
 If the action is an external program, but the executable doesn't exist, the
 entry is excluded from the submenu."
@@ -933,7 +938,8 @@ icons directly, but as strings containing the hexadecimal character codes."
 This function is the Dir Treeview implementation of
 `treeview-get-label-margin-left-function'.  It returns
 `dir-treeview-file-label-margin-left' if NODE is a leaf node according to
-`dir-treeview-node-leaf-p', otherwise it returns `dir-treeview-dir-label-margin-left'."
+`dir-treeview-node-leaf-p', otherwise it returns
+`dir-treeview-dir-label-margin-left'."
   (if (dir-treeview-node-leaf-p node)
       dir-treeview-file-label-margin-left dir-treeview-dir-label-margin-left))
  
@@ -994,8 +1000,8 @@ Calls the function stored in the customizable variable
 (defun dir-treeview-filter-dir-contents (contents)
   "Return the elements of CONTENTS that should be shown in the tree.
 CONTENTS should be a list of filenames.  Typically it is a list of all filenames
-in  a directoy.  The function returns a list of all elements of CONTENTS for which
-`dir-treeview-accept-filename-function' returns true."
+in  a directoy.  The function returns a list of all elements of CONTENTS for
+which `dir-treeview-accept-filename-function' returns true."
   (let ( (filtered-contents ()) )
     (while contents
       (let ( (filename (car contents)) )
@@ -1007,12 +1013,12 @@ in  a directoy.  The function returns a list of all elements of CONTENTS for whi
 (defun dir-treeview-default-compare-filenames (filename-1 filename-2)
   "Return non-nil if FILENAME-1 is less than FILENAME-2 in default sort order.
 This is the default implementation of `dir-treeview-compare-filenames-function'.
-The sort order implied by this function depends on the value of the boolean variable
-`dir-treeview-show-dirs-first'.  If it is nil, the sorting is simply lexicographic.
-In fact, it is done by `string<'.  If `dir-treeview-show-dirs-first' is non-nil,
-directories always come first, and the non-directories follow after them.  The
-directories and non-directories among each other are sorted lexicographically
-by `string<' again."
+The sort order implied by this function depends on the value of the boolean
+variable `dir-treeview-show-dirs-first'.  If it is nil, the sorting is simply
+lexicographic.  In fact, it is done by `string<'.
+If `dir-treeview-show-dirs-first' is non-nil, directories always come first,
+and the non-directories follow after them.  The directories and non-directories
+among each other are sorted lexicographically by `string<' again."
   (if dir-treeview-show-dirs-first
       (if (file-directory-p filename-1)       ;; filename-1 | filename-2
           (if (file-directory-p filename-2)   ;; -----------+-----------
@@ -1057,7 +1063,8 @@ Sorting is done according to `dir-treeview-compare-filenames'."
 
 (defun dir-treeview-find-node-with-relative-name (relative-name &optional base-node)
   "Return the node with name RELATIVE-NAME relative to BASE-NODE.
-If no such node exists, return nil.  BASE-NODE defaults to `dir-treeview-start-node'."
+If no such node exists, return nil.
+BASE-NODE defaults to `dir-treeview-start-node'."
   (let ( (node (or base-node dir-treeview-start-node))
          (name-parts (split-string relative-name dir-treeview-split-path-regexp)) )
     (while (and node name-parts)
@@ -1643,7 +1650,7 @@ This suppresses the build-in confirmation question which would otherwise occur
 if the buffer was modified.  Can be used if the user already confirmed to kill
 the buffer by means of one of fir-treeview's own confirmation dialogs (e.g.,
 `dir-treeview-user-confirm-y-or-n'."
-  (with-current-buffer buffer (not-modified))
+  (with-current-buffer buffer (set-buffer-modified-p nil))
   (kill-buffer buffer))
 
 (defun dir-treeview-get-buffers-for-prefix-path (prefix)
@@ -1655,9 +1662,9 @@ hold true:
   (3) its filename starts with PREFIX + DIR_SEP,
 where DIR_SEP is the platform-specific directory separator (e.g., \"/\" on Linux
 or Unix).
-This is an auxiliary function for updating buffer filenames after a file has been
-renamed, or for cleaning up orphand buffers after a file or directory has been
- deleted."
+This is an auxiliary function for updating buffer filenames after a file has
+been renamed, or for cleaning up orphand buffers after a file or directory has
+been  deleted."
   (let ( (buffers ()) (prefix-as-dir (directory-file-name prefix)) )
     (dolist (buffer (buffer-list))
       (let ( (filename (buffer-file-name buffer)) )
@@ -1830,7 +1837,7 @@ TARGET-DIR."
 (defun dir-treeview-delete-files (files)
   "Delete FILES.
 FILES should be a list of filenames."
-  (let ( (nondirs ()) (dirs ()) (prompt nil) )
+  (let ( (nondirs ()) (dirs ()) )
     (dolist (file files) (push file (if (file-directory-p file) dirs nondirs)))
     (let ( (prompt nil) (nondirs-count (length nondirs)) (dirs-count (length dirs)) )
       (when (> nondirs-count 0)
@@ -2156,7 +2163,8 @@ Usually, there should be at most one enabled Dir Treeview theme at a time."
 (defun dir-treeview-get-theme-display-name (theme)
   "Return the display name of THEME.
 THEME must be a Dir Treeview theme, as a theme symbol.
-See `dir-treeview-theme-p' for the criterion when a theme is a Dir Treeview theme."
+See `dir-treeview-theme-p' for the criterion when a theme is considered a
+Dir Treeview theme."
     (let ( (entry (assq theme dir-treeview-theme-alist)) )
       (if entry (cdr entry)
         (error "Not a dir-treeview theme: %s" theme) )) )
@@ -2196,7 +2204,7 @@ See `dir-treeview-theme-p' for a definition what a Dir Treeview themes is."
   (interactive (list (completing-read "Load Dir Treeview theme: " (dir-treeview-get-themes-display-names)) nil))
   (dir-treeview-disable-themes)
   (unless (string-equal name "None")
-    (load-theme (dir-treeview-get-theme-for-display-name name)))
+    (load-theme (dir-treeview-get-theme-for-display-name name) no-confirm))
   (dolist (buffer (dir-treeview-get-buffers))
     (with-current-buffer buffer (treeview-refresh-tree))))
 
@@ -2266,7 +2274,7 @@ When `dir-treeview-theme-file' does not exist, doen't load a theme, but sets
 
 (defun dir-treeview-create-local-keymap ()
   "Create and return the local keymap for Dir Treeview buffers."
-  (let ( (map (make-keymap)) (theme-menu (dir-treeview-create-theme-menu)) )
+  (let ( (map (make-keymap)) )
     (define-key map "h" 'dir-treeview-toggle-show-hidden-files)
     (define-key map "b" 'dir-treeview-toggle-show-backup-files)
     (define-key map (kbd "<down>") 'treeview-next-line)
@@ -2320,5 +2328,8 @@ When `dir-treeview-theme-file' does not exist, doen't load a theme, but sets
 (dir-treeview-register-theme 'dir-treeview-pleasant "Pleasant")
 
 (provide 'dir-treeview)
+
+;; Load additional themes if installed:
+(require 'dir-treeview-themes nil t)
 
 ;;; dir-treeview.el ends here
