@@ -2219,7 +2219,7 @@ Lisp file.  If the latter is part of a package, and the package provides a
 theme, this function can be called to add the package directory to
 `custom-theme-load-path' so that the theme can be found."
   (when (and (boundp 'custom-theme-load-path) load-file-name)
-    (add-to-list 'custom-theme-load-path (file-name-as-directory (file-name-directory load-file-name))))
+    (add-to-list 'custom-theme-load-path (file-name-as-directory (file-name-directory load-file-name)))))
 
 (defun dir-treeview-create-theme-menu (&optional _unused)
   "Create the menu for selecting the theme."
