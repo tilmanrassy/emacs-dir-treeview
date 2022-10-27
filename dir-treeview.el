@@ -2130,7 +2130,7 @@ in the keys of `dir-treeview-theme-alist'."
   (and (symbolp theme) (assq theme dir-treeview-theme-alist)))
 
 (defun dir-treeview-register-theme (theme display-name)
-  "Adds THEME with corresponding DISPLAY-NAME to `dir-treeview-theme-alist'.
+  "Add THEME with corresponding DISPLAY-NAME to `dir-treeview-theme-alist'.
 If `dir-treeview-theme-alist' already contains an entry for THEME, thew display
 name is updated."
   (let ( (entry (assq theme dir-treeview-theme-alist)) )
