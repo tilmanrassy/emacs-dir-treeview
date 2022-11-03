@@ -42,10 +42,14 @@
 (require 'filenotify)
 
 (defconst dir-treeview-version "1.3.2"
-  "Version of the 'dir-treeview package.")
+  "Version of the Dir Treeview' package.
+See URL `https://github.com/tilmanrassy/emacs-dir-treeview' for more information
+on this package.")
 
 (defun dir-treeview-show-version ()
-  "Display the 'dir-treeview version in the echo area."
+  "Display the Dir Treeview' version in the echo area.
+See URL `https://github.com/tilmanrassy/emacs-dir-treeview' for more information
+on Dir Treeview."
   (interactive)
   (message "%s" dir-treeview-version))
 
@@ -60,7 +64,10 @@ file path separator (slash on Linux and Unix)."
     path))
 
 (defgroup dir-treeview nil
-  "Customizaton group for 'dir-treeview.
+  "Customizaton group for Dir Treeview.
+
+See URL `https://github.com/tilmanrassy/emacs-dir-treeview' for more information
+on Dir Treeview.
 
 Note that the theme cannot be set by the customizaton system.  To change and
 save the theme, use the menu bar or \[treeview-load-theme] and

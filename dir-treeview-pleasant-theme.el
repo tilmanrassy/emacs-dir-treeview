@@ -30,7 +30,8 @@
 (require 'dir-treeview)
 
 (deftheme dir-treeview-pleasant
-  "A plain dir-treeview theme with fontawesome icons.")
+  "A plain Dir Treeview theme with fontawesome icons.
+See URL `https://github.com/tilmanrassy/emacs-dir-treeview' for Dir Treeview.")
   
 (custom-theme-set-variables
  'dir-treeview-pleasant
