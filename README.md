@@ -3,7 +3,7 @@ emacs-dir-treeview
 
 Emacs file system navigator and simple file manager.
 
-This document describes v1.3.2 of emacs-dir-treeview.
+This document describes v1.3.3 of emacs-dir-treeview.
 
 * [Overview](#overview)
 * [Screenshots](#screenshots)
@@ -90,8 +90,7 @@ file. Add the following to your `init.el`:
 Make sure the "Font Awesome" icon font is installed on your computer.
 
 If you installed dir-treeview from MELPA, there is nothing else to do. If you installed dir-treeview manually, copy
-the file `dir-treeview-pleasant-theme.el` either to somewhere in the theme load path (cf. Lisp variable `custom-theme-load-path`)
-or to somewhere in the usual load path (cf. Lisp variable `load-path`).
+the file `dir-treeview-pleasant-theme.el` to somewhere in the theme load path (cf. Lisp variable `custom-theme-load-path`).
 
 To enable the theme, see [Enabling themes](#enabling-themes).
 
@@ -243,6 +242,9 @@ Key           | Action
 
 Themes
 ------
+
+Dir-treeview commes with a theme called "Pleasant". It uses Font Awesome icons. More themes can be found at
+[emacs-dir-treeview-themes](https://github.com/tilmanrassy/emacs-dir-treeview-themes).
 
 ### Enabling themes
 
