@@ -195,7 +195,7 @@ As usual in Emacs, dir-treeview activates a special local keymap in its buffers 
 #### Local keymap
 
 Key         | Action
-------------|-------------------------
+------------|-------------------------------------------
 `<down>`    | Move to next node
 `<up>`      | Move to previuos node
 `C-<down>`  | Move to last sibling
@@ -205,6 +205,7 @@ Key         | Action
 `d`         | Delete file or directory
 `DEL`       | Delete file or directory
 `c`         | Copy file or directory
+`C`         | Copy selected files to directory at point
 `r`         | Rename file or directory
 `t`         | Open terminal
 `f`         | New file

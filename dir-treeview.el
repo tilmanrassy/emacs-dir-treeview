@@ -1,11 +1,11 @@
 ;;; dir-treeview.el --- A directory tree browser and simple file manager -*- lexical-binding: t -*-
 
-;; Copyright (C) 2018-2022 Tilman Rassy
+;; Copyright (C) 2018-2023 Tilman Rassy
 
 ;; Author: Tilman Rassy <tilman.rassy@googlemail.com>
 ;; URL: https://github.com/tilmanrassy/emacs-dir-treeview
-;; Version: 1.3.3
-;; Package-Requires: ((emacs "24.4") (treeview "1.1.1"))
+;; Version: 1.4.0
+;; Package-Requires: ((emacs "24.4") (treeview "1.2.0"))
 ;; Keywords: tools, convenience, files
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -605,7 +605,7 @@ See `dir-treeview-log-file-notify-event' for more information."
   "Face to highlight selected nodes.")
 
 (defface dir-treeview-highlight-face
-  '((t (:background "yellow")))
+  '((t (:background "GreenYellow")))
   "Face to highlicht a node.")
 (defface dir-treeview-link-target-face
   ()
@@ -1420,6 +1420,7 @@ directories, and open terminals in directories."
         mode-line-format (dir-treeview-create-mode-line-format))
   (use-local-map (dir-treeview-create-local-keymap))
   (add-hook 'post-command-hook 'treeview-unselect-all-nodes-after-keyboard-quit 0 t)
+  (add-hook 'post-command-hook 'treeview-unhighlight-node 0 t)
   (run-mode-hooks 'dir-treeview-mode-hook))
 (put 'dir-treeview-mode 'mode-class 'special)
 
@@ -1613,7 +1614,7 @@ This function is not suitable for directories.  Use `dir-treeview-copy-dir'
 to copy directories."
   (let* ( (filename (treeview-get-node-prop node 'absolute-name))
           (prompt (concat "Copy " (dir-treeview-local-filename filename) " to: "))
-          (new-filename (expand-file-name (dir-treeview-read-file-name prompt (file-name-directory filename)))) )
+          (new-filename (expand-file-name (dir-treeview-read-file-name prompt filename))) )
     (if (file-directory-p new-filename)
         (setq new-filename (concat (file-name-as-directory new-filename) (dir-treeview-local-filename filename))))
     (if (or (not (file-exists-p new-filename))
@@ -1640,15 +1641,18 @@ already, asks for confirmation in the minibuffer before overwriting it."
               ;; If file watch is enabled, we let its callback function do the refreshing
               (unless dir-treeview-file-watch-enabled (treeview-refresh-node parent-of-new))) ))))
 
+(defun dir-treeview-copy-file-or-dir (node)
+  "Copy the file or directory corresponding to NODE.
+Calls `dir-treeview-copy-dir' if the node corresponds to a directory, and
+`dir-treeview-copy-file' if the node corresponds to a non-directory."
+  (if (dir-treeview-directory-p node) (dir-treeview-copy-dir node) (dir-treeview-copy-file node)))
+
 (defun dir-treeview-copy-file-or-dir-at-point ()
   "Copy the file or directory corresponding to the node at point.
-If there is a node at point, calls `dir-treeview-copy-dir' if the node
-corresponds to a directory, and `dir-treeview-copy-file' if the node
-corresponds to a non-directory.  If there is no node at point, does nothing."
+If there is a node at point, calls `dir-treeview-copy-file-or-dir'.
+If there is no node at point, does nothing."
   (interactive)
-  (let ( (node (treeview-get-node-at-pos (point))) )
-    (when node
-      (if (dir-treeview-directory-p node) (dir-treeview-copy-dir node) (dir-treeview-copy-file node)))))
+  (treeview-highlight-node-at-point-and-call 'dir-treeview-copy-file-or-dir))
 
 (defun dir-treeview-kill-buffer (buffer)
   "Kill buffer BUFFER.
@@ -1725,7 +1729,7 @@ exists already, the function asks for confirmation in the minibuffer before
 overwriting it."
   (let* ( (filename (treeview-get-node-prop node 'absolute-name))
           (prompt (concat "Rename " (dir-treeview-local-filename filename) " to: "))
-          (new-filename (expand-file-name (dir-treeview-read-file-name prompt (file-name-directory filename)))) )
+          (new-filename (expand-file-name (dir-treeview-read-file-name prompt filename))) )
     (if (file-directory-p new-filename)
         (setq new-filename (concat (file-name-as-directory new-filename) (dir-treeview-local-filename filename))))
     (if (or (not (file-exists-p new-filename))
@@ -1745,7 +1749,7 @@ overwriting it."
 Calls `dir-treeview-rename-file' with the node at point.  If there is no node at
 point, does nothing."
   (interactive)
-  (treeview-call-for-node-at-point 'dir-treeview-rename-file))
+  (treeview-highlight-node-at-point-and-call 'dir-treeview-rename-file))
  
 (defun dir-treeview-delete-file (node)
   "Delete the file corresponding to NODE.
@@ -1769,15 +1773,18 @@ Asks for confirmation in the minibuffer."
       (unless dir-treeview-file-watch-enabled (treeview-refresh-node (treeview-get-node-parent node)))
       (dir-treeview-kill-orphand-buffers dir) )))
 
+(defun dir-treeview-delete-file-or-dir (node)
+  "Delete the file or directory corresponding to the NODE.
+Calls `dir-treeview-delete-dir' if NODE corresponds to a directory, and
+`dir-treeview-delete-file' if NODE corresponds to a non-directory."
+  (if (dir-treeview-directory-p node) (dir-treeview-delete-dir node) (dir-treeview-delete-file node)))
+
 (defun dir-treeview-delete-file-or-dir-at-point ()
   "Delete the file or directory corresponding to the node at point.
-If there is a node at point, calls `dir-treeview-delete-dir' if the node
-corresponds to a directory, and `dir-treeview-delete-file' if the node
-corresponds to a non-directory.  If there is no node at point, does nothing."
+If there is a node at point, calls `dir-treeview-delete-file-or-dir' for that
+node.  If there is no node at point, does nothing."
   (interactive)
-  (let ( (node (treeview-get-node-at-pos (point))) )
-    (when node
-      (if (dir-treeview-directory-p node) (dir-treeview-delete-dir node) (dir-treeview-delete-file node)))))
+  (treeview-highlight-node-at-point-and-call 'dir-treeview-delete-file-or-dir))
 
 (defun dir-treeview-delete-at-point ()
   "Delete file at point, or all selected files if node at point is selected.
@@ -1789,8 +1796,9 @@ If there is no node at point, does nothing."
   (let ( (node (treeview-get-node-at-pos (point))) )
     (when node
       (if (treeview-node-selected-p node) (dir-treeview-delete-selected-files)
-        (if (dir-treeview-directory-p node) (dir-treeview-delete-dir node)
-          (dir-treeview-delete-file node) )))))
+        (treeview-highlight-node node)
+        (dir-treeview-delete-file-or-dir node)
+        (treeview-unhighlight-node)) )))
 
 (defun dir-treeview-user-confirm-overwrite (filename)
   "Ask the user for confirmation to overwrite one or all files in question.
@@ -1897,6 +1905,21 @@ FILES should be a list of filenames."
   "Delete all selected files."
   (dir-treeview-delete-files (dir-treeview-get-selected-files))
   (treeview-unselect-all-nodes))
+
+(defun dir-treeview-copy-selected-files-to-dir-at-point ()
+  "Copy all selected files to the directory at point.
+If there is no node at point, does nothing.  If there a are no selected files,
+does nothing, but shows a message in the echo area.  If the node at point
+doesn't represent a directory, an error is signaled."
+  (interactive)
+  (let ( (node (treeview-get-node-at-pos (point))) )
+    (when node
+      (if (treeview-selected-nodes-exist)
+          (let ( (absolute-name (treeview-get-node-prop node 'absolute-name)) )
+            (unless (file-directory-p absolute-name) (error "\"%s\" is  not a directory" absolute-name))
+            (when (dir-treeview-user-confirm-y-or-n "Copy selected files here? ")
+              (dir-treeview-copy-selected-files-to absolute-name) ))
+        (message "No files selected")) )))
 
 (defun dir-treeview-open-selected-files ()
   "Open all selected files in Emacs."
@@ -2306,6 +2329,7 @@ When `dir-treeview-theme-file' does not exist, doen't load a theme, but sets
     (define-key map (kbd "d") 'dir-treeview-delete-at-point)
     (define-key map (kbd "<delete>") 'dir-treeview-delete-at-point)
     (define-key map (kbd "c") 'dir-treeview-copy-file-or-dir-at-point)
+    (define-key map (kbd "C") 'dir-treeview-copy-selected-files-to-dir-at-point)
     (define-key map (kbd "r") 'dir-treeview-rename-file-at-point)
     (define-key map (kbd "t") 'dir-treeview-open-terminal-at-point)
     (define-key map (kbd "f") 'dir-treeview-open-new-file-at-point)
