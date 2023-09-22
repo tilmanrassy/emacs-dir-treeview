@@ -200,8 +200,7 @@ tree has been initialized."
     ("<mouse-2>" . treeview-toggle-node-state-at-event)
     ("<mouse-3>" . dir-treeview-popup-node-menu-at-mouse)
     ("RET" . treeview-toggle-node-state-at-point)
-    ("SPC" . treeview-toggle-node-state-at-point)
-    ("e" . dir-treeview-popup-node-menu-at-point))
+    ("SPC" . treeview-toggle-node-state-at-point))
   "Keymap of the control symbols.
 A list of assignments of key sequences to commands.  Key sequences are strings
 in a format understood by `kbd'.  Commands a names of Lisp functions."
@@ -213,7 +212,6 @@ in a format understood by `kbd'.  Commands a names of Lisp functions."
     ("<mouse-2>" . dir-treeview-open-file-at-event)
     ("<mouse-3>" . dir-treeview-popup-node-menu-at-mouse)
     ("RET" . dir-treeview-open-file-at-point)
-    ("e" . dir-treeview-popup-node-menu-at-point)
     ("<C-down-mouse-1>" . ignore)
     ("<C-mouse-1>" . treeview-toggle-select-node-at-event)
     ("<S-down-mouse-1>" . ignore)
@@ -2326,6 +2324,8 @@ When `dir-treeview-theme-file' does not exist, doen't load a theme, but sets
     (define-key map (kbd "C-<down>") 'treeview-goto-last-sibling)
     (define-key map (kbd ".") 'treeview-refresh-subtree-at-point)
     (define-key map (kbd "=") 'treeview-refresh-tree)
+    (define-key map (kbd "m") 'dir-treeview-popup-node-menu-at-point)
+    (define-key map (kbd "e") 'dir-treeview-popup-node-menu-at-point) ;; Legacy support
     (define-key map (kbd "d") 'dir-treeview-delete-at-point)
     (define-key map (kbd "<delete>") 'dir-treeview-delete-at-point)
     (define-key map (kbd "c") 'dir-treeview-copy-file-or-dir-at-point)
