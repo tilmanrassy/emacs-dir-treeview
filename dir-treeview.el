@@ -1629,7 +1629,7 @@ Asks for the target directory in the minibuffer.  If the target exists
 already, asks for confirmation in the minibuffer before overwriting it."
   (let* ( (dir (treeview-get-node-prop node 'absolute-name))
           (prompt (concat "Copy " (dir-treeview-local-filename dir) " to: "))
-          (new-dir (expand-file-name (dir-treeview-read-file-name prompt))) )
+          (new-dir (expand-file-name (dir-treeview-read-file-name prompt dir))) )
     (if (file-directory-p new-dir)
         (setq new-dir (concat (file-name-as-directory new-dir) (dir-treeview-local-filename dir))))
     (if (or (not (file-exists-p new-dir)) (dir-treeview-user-confirm-y-or-n (concat new-dir " exists. Overwrite? ")))
