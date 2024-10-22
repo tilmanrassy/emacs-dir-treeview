@@ -36,6 +36,7 @@ Overview
 * Can open files by external programs or Lisp functions
 * Can open terminal in directory
 * Can copy, delete, and move files
+* Can change file modes (i.e., permissions, executability, etc.) and file ownerships
 * Provides selection of multiple files to operate on them
 * Works in text mode, too
 * Supports file notifications
@@ -207,6 +208,8 @@ Key         | Action
 `c`         | Copy file or directory
 `C`         | Copy selected files to directory at point
 `r`         | Rename file or directory
+`M-m`       | Change file mode (permissions, executability, etc.)
+`M-o`       | Change file owner (requires root privileges)
 `t`         | Open terminal
 `f`         | New file
 `s`         | New directory
