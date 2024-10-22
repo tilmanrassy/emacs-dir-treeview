@@ -1,6 +1,6 @@
 ;;; dir-treeview.el --- A directory tree browser and simple file manager -*- lexical-binding: t -*-
 
-;; Copyright (C) 2018-2023 Tilman Rassy
+;; Copyright (C) 2018-2024 Tilman Rassy
 
 ;; Author: Tilman Rassy <tilman.rassy@googlemail.com>
 ;; URL: https://github.com/tilmanrassy/emacs-dir-treeview
@@ -222,16 +222,6 @@ in a format understood by `kbd'.  Commands a names of Lisp functions."
   :group 'dir-treeview
   :type '(repeat (cons (string :tag "Key    ") (function :tag "Command"))))
 
-(defcustom dir-treeview-parent-dir-control-keymap
-  '(("<mouse-1>" . dir-treeview-to-parent-dir)
-    ("<mouse-2>" . dir-treeview-to-parent-dir)
-    ("RET" . dir-treeview-to-parent-dir))
-  "Keymap of the parent directory link control.
-A list of assignments of key sequences to commands.  Key sequences are strings
-in a format understood by `kbd'.  Commands a names of Lisp functions."
-  :group 'dir-treeview
-  :type '(repeat (cons (string :tag "Key    ") (function :tag "Command"))))
-
 (defcustom dir-treeview-show-hidden-files
   nil
   "Whether hidden files are shown or not."
@@ -288,7 +278,7 @@ This is used by `dir-treeview-is-video-p'."
   :type 'regexp)
 
 (defcustom dir-treeview-use-file-dialog nil
-  "Whether a graphical file dilag is used for selecting files."
+  "Whether a graphical file dialog is used for selecting files."
   :group 'dir-treeview
   :type 'boolean)
 
@@ -498,6 +488,49 @@ See `dir-treeview-log-file-notify-event' for more information."
   :group 'dir-treeview
   :type 'string)
 
+(defcustom dir-treeview-sudo-function 'dir-treeview-sudo-tramp
+  "Function to run an external program as root.
+
+Dir Treeview provides three predefined functions for this, which differ in the
+way they handle prompting for the password:
+
+`dir-treeview-sudo-tramp' - Uses Tramp with method \"sudo\".  The password is
+read in the  minibuffer.
+
+`dir-treeview-sudo-nopasswd' - Uses `sudo´ without any arrangements to provide a
+password.  Choose this only if `sudo´ is configured in such a way that it doesn't
+ask for a password.
+
+`dir-treeview-pkexec' - Uses `pkexec'.  The password is read in a graphical popup
+window.
+
+See the documentations of the functions for more information.  The first two
+functions doesn't require a graphical display, and are therefore possible
+values for `dir-treeview-sudo-function-textmode', too.
+
+If you want to write your own function, it must accept the following arguments:
+
+CMD - The command to run, possibly with path.  A string.
+
+DIR - Directory of the external process.  A string or nil.  If nil, the value of
+`default-directory' should be used as the directory. of the process.
+
+ARGS - The arguments passed to the executable.  A list of strings.  May be
+defined as a &rest argument.
+
+The function should run the command in a synchronious external process."
+  :group 'dir-treeview
+  :type 'function)
+
+(defcustom dir-treeview-sudo-function-textmode 'dir-treeview-sudo-tramp
+  "Function to run an external program as root when in text mode.
+This variable is used instead of `dir-treeview-sudo-function' if no graphical
+display is available, or, more precisely, if (`display-graphic-p') returns nil.
+The documentation of `dir-treeview-sudo-function' also applies to this variable,
+except that only functions suitable for text mode should be set als value."
+  :group 'dir-treeview
+  :type 'function)
+
 (defface dir-treeview-default-icon-face
   ()
   "Default face to highlight icons."
@@ -644,7 +677,11 @@ See `dir-treeview-log-file-notify-event' for more information."
   "Invalid major mode (expected dir-treeview-mode)" 'treeview-error)
 
 (define-error 'dir-treeview-no-parent-dir-error
-  "No parent directory" 'treeview-error)
+              "No parent directory" 'treeview-error)
+
+(defun dir-treeview-get-node-absolute-name (node)
+  "Return the absolute filename of NODE."
+  (treeview-get-node-prop node 'absolute-name))
 
 (defun dir-treeview-user-confirm-y-or-n (prompt)
   "Ask the user for confirmation in the minibuffer.
@@ -824,14 +861,14 @@ CHILDREN:      The children of the new node.  Should be a list of nodes.
                If omitted, the children list of the new node is nil."
   (let ( (node (treeview-new-node)) )
     (treeview-set-node-name node (dir-treeview-local-filename absolute-name))
-    (treeview-set-node-prop node 'absolute-name absolute-name)
+    (treeview-set-node-prop node 'absolute-name (directory-file-name absolute-name))
     (treeview-set-node-parent node parent)
     (treeview-set-node-children node children)
     node))
 
 (defun dir-treeview-directory-p (node)
   "Return non-nil if NODE represends a directory."
-  (file-directory-p (treeview-get-node-prop node 'absolute-name)))
+  (file-directory-p (dir-treeview-get-node-absolute-name node)))
 
 (defun dir-treeview-node-leaf-p (node)
   "Return non-nil if NODE is a leaf node.
@@ -839,7 +876,7 @@ This function is the implementation of `treeview-node-leaf-p-function' in
 Dir Treeview.  It returns non-nil if, and only if, NODE represends a file which
 is not a directory.  Note that this function considers empty directories
 not as leaf nodes."
-  (not (file-directory-p (treeview-get-node-prop node 'absolute-name))))
+  (not (file-directory-p (dir-treeview-get-node-absolute-name node))))
 
 (defun dir-treeview-get-indent (node)
   "Return the indentation of NODE."
@@ -864,7 +901,7 @@ directory is folded or not.  Otherwise, nil (meaning: no control) is returned."
 
 (defun dir-treeview-query-tester-value-list (node tester-value-list)
   "Return the value for NODE according TESTER-VALUE-LIST."
-  (let ( (filename (treeview-get-node-prop node 'absolute-name))
+  (let ( (filename (dir-treeview-get-node-absolute-name node))
          (value nil) )
     (while (and (not value) tester-value-list)
       (let* ( (item (car tester-value-list))
@@ -1046,8 +1083,8 @@ two filenames."
 The function simply applies `dir-treeview-compare-filenames' to the absolute
 filenames of the nodes."
   (dir-treeview-compare-filenames
-   (treeview-get-node-prop node-1 'absolute-name)
-   (treeview-get-node-prop node-2 'absolute-name)))
+   (dir-treeview-get-node-absolute-name node-1)
+   (dir-treeview-get-node-absolute-name node-2)))
 
 (defun dir-treeview-get-dir-contents (dir)
   "Return the contents of DIR, filtered and sorted.
@@ -1088,8 +1125,19 @@ BASE-NODE defaults to `dir-treeview-start-node'."
 Start the search at BASE-NODE.  Return nil if no node was found.
 BASE-NODE defaults to `dir-treeview-start-node'."
   (unless base-node (setq base-node dir-treeview-start-node))
-  (let ( (relative-name (dir-treeview-relative-filename absolute-name (treeview-get-node-prop base-node 'absolute-name))) )
+  (let ( (relative-name (dir-treeview-relative-filename absolute-name (dir-treeview-get-node-absolute-name base-node))) )
     (if relative-name (dir-treeview-find-node-with-relative-name relative-name base-node))))
+
+(defun dir-treeview-find-child-with-absolute-name (absolute-name node)
+  "Search and return the child of NODE with the absolute name ABSOLUTE-NAME.
+Return nil if no node was found."
+  (let ( (children (treeview-get-node-children node)) (found-child nil) )
+    (while (and children (not found-child))
+      (let ( (child (car children)) )
+        (when (equal (dir-treeview-get-node-absolute-name child) absolute-name)
+          (setq found-child child))
+        (setq children (cdr children))))
+    found-child))
 
 (defun dir-treeview-update-node-children (node)
   "Update the children of NODE.
@@ -1110,7 +1158,7 @@ done.
 In both cases, NODE is returned."
   (if (and (dir-treeview-directory-p node) (treeview-node-expanded-p node))
       (let ( (contents (dir-treeview-get-dir-contents
-                        (treeview-get-node-prop node 'absolute-name)))
+                        (dir-treeview-get-node-absolute-name node)))
              (children ()) )
         (while contents
           (let* ( (absolute-name (car contents))
@@ -1176,14 +1224,12 @@ If no such node exists, does nothing."
 
 (defun dir-treeview-redisplay ()
   "Redisplay current buffer, which should be a Dir Treeview buffer."
-  (let ( (dir (treeview-get-node-prop dir-treeview-start-node 'absolute-name))
+  (let ( (dir (dir-treeview-get-node-absolute-name dir-treeview-start-node))
          (buffer-read-only nil) )
     (erase-buffer)
     (goto-char (point-min))
     (treeview-make-text-overlay dir nil 'dir-treeview-start-dir-face)
     (insert ":")
-    (newline)
-    (dir-treeview-create-parent-link)
     (newline)
     (treeview-display-node dir-treeview-start-node)))
 
@@ -1194,6 +1240,7 @@ If no such node exists, does nothing."
       (with-current-buffer buffer
         (if (eq major-mode 'dir-treeview-mode)
             (setq dir-treeview-buffers (cons buffer dir-treeview-buffers)))))
+    (nreverse dir-treeview-buffers)
     dir-treeview-buffers))
 
 (defun dir-treeview-get-buffer (&optional dir)
@@ -1205,12 +1252,11 @@ list is empty (i.e., nil), return nil."
   (let ( (dir-treeview-buffers (dir-treeview-get-buffers))
          (buffer nil) )
     (if dir
-        (let ( (absolute-name (expand-file-name dir)) )
+        (let ( (absolute-name (directory-file-name (expand-file-name dir))) )
           (save-excursion
             (while (and (not buffer) dir-treeview-buffers)
               (set-buffer (car dir-treeview-buffers))
-              (if (equal (treeview-get-node-prop dir-treeview-start-node 'absolute-name)
-                         absolute-name)
+              (if (equal (dir-treeview-get-node-absolute-name dir-treeview-start-node) absolute-name)
                   (setq buffer (current-buffer)))
               (setq dir-treeview-buffers (cdr dir-treeview-buffers)))))
       (if dir-treeview-buffers (setq buffer (car dir-treeview-buffers))) )
@@ -1302,7 +1348,7 @@ exists, the corresponding file watch descriptor is removed by means of
   (let ( dirnames new-watch-alist item )
     ;; Get paths of all directory nodes and store them in 'dirnames':
     (dolist (node (dir-treeview-get-nodes-in-each-buffer 'dir-treeview-directory-p))
-      (let ( (dirname (treeview-get-node-prop node 'absolute-name)) )
+      (let ( (dirname (dir-treeview-get-node-absolute-name node)) )
         (unless (member dirname dirnames) (push dirname dirnames))))
     ;; Iterate through watch alist, remove all watches of directories not in 'directories':
     (while (setq item (pop dir-treeview-file-watch-alist))
@@ -1320,7 +1366,7 @@ folded-unread.  File watching only makes sence for such nodes.
 See chapter \"File Notifications\" of the GNU Emacs Lisp Reference Manual for
 more information about file watching."
   (when (and (dir-treeview-directory-p node) (not (eq (treeview-get-node-state node) 'folded-unread)))
-    (let ( (dirname (treeview-get-node-prop node 'absolute-name)) )
+    (let ( (dirname (dir-treeview-get-node-absolute-name node)) )
       (unless (assoc dirname dir-treeview-file-watch-alist)
         (push (cons dirname (file-notify-add-watch dirname '(change) 'dir-treeview-file-notify-callback))
               dir-treeview-file-watch-alist)))))
@@ -1364,20 +1410,9 @@ more information about file watching."
 This function is the implementation of `treeview-after-node-expanded-function'
 in Dir Treeview.  Therefore, it is called each time a node is expanded.
 Currently,  the function runs only one action, i.e., it calles
-`dir-treeview-add-to-file-watch-if-applicable' provied
+`dir-treeview-add-to-file-watch-if-applicable' provided
 `dir-treeview-file-watch-enabled' is non-nil."
   (if dir-treeview-file-watch-enabled (dir-treeview-add-to-file-watch-if-applicable node)))
-
-(defun dir-treeview-create-parent-link ()
-  "Create the link to the parent directory."
-  (beginning-of-line)
-  (let* ( (start (point))
-          (overlay (progn
-                     (treeview-put dir-treeview-parent-dir-control)
-                     (make-overlay start (point)))) )
-    (overlay-put overlay 'keymap (treeview-make-keymap dir-treeview-parent-dir-control-keymap))
-    (overlay-put overlay 'face 'dir-treeview-control-face)
-    (overlay-put overlay 'mouse-face 'dir-treeview-control-mouse-face) ))
 
 (defun dir-treeview-create-mode-line-option-entry (option-symbol label help-text)
   "Create a mode line entry for a yes/no option.
@@ -1497,33 +1532,38 @@ If there exists no such buffer, create one and switch to it."
   (interactive)
   (dir-treeview-open dir-treeview-default-root))
 
-(defun dir-treeview-to-parent-dir ()
-  "Display the tree for the parent directory."
-  (interactive)
-  (let ( (parent-dir (dir-treeview-parent-filename
-                      (treeview-get-node-prop dir-treeview-start-node 'absolute-name))) )
-    (if (not parent-dir) (error 'dir-treeview-no-parent-dir-error)
-      (setq dir-treeview-start-node (dir-treeview-new-node parent-dir))
-      (treeview-expand-node dir-treeview-start-node)
-      (dir-treeview-redisplay))))
-
-(defun dir-treeview-call-for-file-at-point (action-function &optional error-when-dir error-when-non-dir)
+(defun dir-treeview-call-for-file-at-point (action-function)
   "Apply ACTION-FUNCTION to the filename of the node at point.
 ACTION-FUNCTION must be the symbol of a function.  The function is called with
 one argument, the absolute filename of the node at point.  If there is no node
-at point, does nothing.  If ERROR-WHEN-DIR is non-nil, an error is signaled if
-the correcponing file is a directory.  If ERROR-WHEN-NON-DIR i non-nil, an
-error is signaled if the correcponing file is not a directory."
+at point, does nothing."
   (let* ( (node (treeview-get-node-at-pos (point)))
-          (filename (when node (treeview-get-node-prop node 'absolute-name))) )
+          (filename (when node (dir-treeview-get-node-absolute-name node))) )
     (when filename
-      (when (and error-when-dir (file-directory-p filename)) (user-error "\"%s\" is a directory"))
-      (when (and error-when-non-dir (not (file-directory-p filename))) (user-error "\"%s\" is not a directory"))
       (funcall action-function filename))))
+
+(defun dir-treeview-highlight-file-at-point-and-call (action-function)
+  "Highlight node at point and call ACTION-FUNCTION for the corresponding file.
+
+ACTION-FUNCTION must be the symbol of a function.  The function is called with
+one argument, the absolute filename of the node at point.  Before ACTION-FUNCTION
+is invoked, the node is highlighted be means of `treeview-highlight-node'.  After
+ACTION-FUNCTION returns, the node is un-highlighted be means of
+`treeview-unhighlight-node'.
+
+If there is no node at point, does nothing.
+
+Except highlighting, this is the same as `dir-treeview-call-for-file-at-point'."
+  (let* ( (node (treeview-get-node-at-pos (point))) )
+    (when node
+      (treeview-highlight-node node)
+      (unwind-protect
+          (funcall action-function (dir-treeview-get-node-absolute-name node))
+        (treeview-unhighlight-node) ))))
 
 (defun dir-treeview-open-file (node)
   "Open the file corresponding to NODE."
-  (find-file (treeview-get-node-prop node 'absolute-name)))
+  (find-file (dir-treeview-get-node-absolute-name node)))
 
 (defun dir-treeview-open-file-at-event (event)
   "Open the file corresponding to the node at the position where EVENT occurred.
@@ -1595,10 +1635,9 @@ containing LOCATION.."
   (find-file (dir-treeview-read-new-file-name "New file: " (dir-treeview-get-directory location))))
 
 (defun dir-treeview-open-new-file-at-point ()
-  "Open a buffer with a new file in the directory of the node at point.
+  "Open a buffer with a new file in the directory at point.
 Calls `dir-treeview-open-new-file' with the absolute filename of the node at
-point.  Signals an error if the filename does not belong to a directory.
-If there is no node at point, does nothing."
+point."
   (interactive)
   (dir-treeview-call-for-file-at-point 'dir-treeview-open-new-file))
 
@@ -1610,7 +1649,7 @@ exists already, the function asks for confirmation in the minibuffer before
 overwriting it.
 This function is not suitable for directories.  Use `dir-treeview-copy-dir'
 to copy directories."
-  (let* ( (filename (treeview-get-node-prop node 'absolute-name))
+  (let* ( (filename (dir-treeview-get-node-absolute-name node))
           (prompt (concat "Copy " (dir-treeview-local-filename filename) " to: "))
           (new-filename (expand-file-name (dir-treeview-read-file-name prompt filename))) )
     (if (file-directory-p new-filename)
@@ -1627,7 +1666,7 @@ to copy directories."
   "Copy the directory corresponding to NODE.
 Asks for the target directory in the minibuffer.  If the target exists
 already, asks for confirmation in the minibuffer before overwriting it."
-  (let* ( (dir (treeview-get-node-prop node 'absolute-name))
+  (let* ( (dir (dir-treeview-get-node-absolute-name node))
           (prompt (concat "Copy " (dir-treeview-local-filename dir) " to: "))
           (new-dir (expand-file-name (dir-treeview-read-file-name prompt dir))) )
     (if (file-directory-p new-dir)
@@ -1650,7 +1689,7 @@ Calls `dir-treeview-copy-dir' if the node corresponds to a directory, and
 If there is a node at point, calls `dir-treeview-copy-file-or-dir'.
 If there is no node at point, does nothing."
   (interactive)
-  (treeview-highlight-node-at-point-and-call 'dir-treeview-copy-file-or-dir))
+  (treeview-call-for-node-at-point 'dir-treeview-copy-file-or-dir t))
 
 (defun dir-treeview-kill-buffer (buffer)
   "Kill buffer BUFFER.
@@ -1725,7 +1764,7 @@ Reads the target in the minibuffer.  If the target is a directory, the file
 is renamed to a like-named file in that directory.  If the destination file
 exists already, the function asks for confirmation in the minibuffer before
 overwriting it."
-  (let* ( (filename (treeview-get-node-prop node 'absolute-name))
+  (let* ( (filename (dir-treeview-get-node-absolute-name node))
           (prompt (concat "Rename " (dir-treeview-local-filename filename) " to: "))
           (new-filename (expand-file-name (dir-treeview-read-file-name prompt filename))) )
     (if (file-directory-p new-filename)
@@ -1747,14 +1786,14 @@ overwriting it."
 Calls `dir-treeview-rename-file' with the node at point.  If there is no node at
 point, does nothing."
   (interactive)
-  (treeview-highlight-node-at-point-and-call 'dir-treeview-rename-file))
+  (treeview-call-for-node-at-point 'dir-treeview-rename-file t))
  
 (defun dir-treeview-delete-file (node)
   "Delete the file corresponding to NODE.
 Asks for confirmation in the minibuffer.
 This function is not suitable for directories.  Use `dir-treeview-delete-dir'
 to delete directories."
-  (let ( (filename (treeview-get-node-prop node 'absolute-name)) )
+  (let ( (filename (dir-treeview-get-node-absolute-name node)) )
     (when (dir-treeview-user-confirm-y-or-n (concat "Delete " (dir-treeview-local-filename filename) "? "))
       (delete-file filename)
       ;; If file watch is enabled, we let its callback function do the refreshing
@@ -1764,7 +1803,7 @@ to delete directories."
 (defun dir-treeview-delete-dir (node)
   "Recursively delete the directory corresponding to NODE.
 Asks for confirmation in the minibuffer."
-  (let ( (dir (treeview-get-node-prop node 'absolute-name)) )
+  (let ( (dir (dir-treeview-get-node-absolute-name node)) )
     (when (dir-treeview-user-confirm-y-or-n (concat "Recursively delete " (dir-treeview-local-filename dir) " and all its contents? "))
       (delete-directory dir t)
       ;; If file watch is enabled, we let its callback function do the refreshing
@@ -1782,21 +1821,18 @@ Calls `dir-treeview-delete-dir' if NODE corresponds to a directory, and
 If there is a node at point, calls `dir-treeview-delete-file-or-dir' for that
 node.  If there is no node at point, does nothing."
   (interactive)
-  (treeview-highlight-node-at-point-and-call 'dir-treeview-delete-file-or-dir))
+  (treeview-call-for-node-at-point 'dir-treeview-delete-file-or-dir t))
 
 (defun dir-treeview-delete-at-point ()
-  "Delete file at point, or all selected files if node at point is selected.
+  "Delete the file at point, or all selected files if node at point is selected.
 If the node at point is selected, calls `dir-treeview-delete-selected-files'.
-Otherwise, if the node at point corresponds to a directory, calls
-`dir-treeview-delete-dir'.  Otherwise, calls `dir-treeview-delete-file'.
+Otherwise, calls `dir-treeview-delete-file-or-dir'
 If there is no node at point, does nothing."
   (interactive)
   (let ( (node (treeview-get-node-at-pos (point))) )
     (when node
       (if (treeview-node-selected-p node) (dir-treeview-delete-selected-files)
-        (treeview-highlight-node node)
-        (dir-treeview-delete-file-or-dir node)
-        (treeview-unhighlight-node)) )))
+        (treeview-call-for-node node 'dir-treeview-delete-file-or-dir t) ))))
 
 (defun dir-treeview-user-confirm-overwrite (filename)
   "Ask the user for confirmation to overwrite one or all files in question.
@@ -1867,11 +1903,7 @@ FILES should be a list of filenames."
 
 (defun dir-treeview-get-selected-files ()
   "Return all selected files (abolute names)."
-  (let ( (selected-files ()) )
-    (dolist (node (treeview-get-all-selected-nodes))
-      (let ( (file (treeview-get-node-prop node 'absolute-name)) )
-        (unless (member file selected-files) (push file selected-files)) ))
-    selected-files))
+  (seq-uniq (seq-map 'dir-treeview-get-node-absolute-name (treeview-get-all-selected-nodes))))
 
 (defun dir-treeview-copy-selected-files-to (target-dir)
   "Copy all selected files to TARGET-DIR."
@@ -1913,7 +1945,7 @@ doesn't represent a directory, an error is signaled."
   (let ( (node (treeview-get-node-at-pos (point))) )
     (when node
       (if (treeview-selected-nodes-exist)
-          (let ( (absolute-name (treeview-get-node-prop node 'absolute-name)) )
+          (let ( (absolute-name (dir-treeview-get-node-absolute-name node)) )
             (unless (file-directory-p absolute-name) (error "\"%s\" is  not a directory" absolute-name))
             (when (dir-treeview-user-confirm-y-or-n "Copy selected files here? ")
               (dir-treeview-copy-selected-files-to absolute-name) ))
@@ -1933,7 +1965,9 @@ doesn't represent a directory, an error is signaled."
 
 (defun dir-treeview-create-subdir (node)
   "Create a subdiectory of the directory corresponding to NODE."
-  (make-directory (dir-treeview-read-directory-name "New subdirectory: " (treeview-get-node-prop node 'absolute-name)))
+  (make-directory (dir-treeview-read-directory-name
+                   "New subdirectory: "
+                   (file-name-as-directory (dir-treeview-get-node-absolute-name node))))
   ;; If file watch is enabled, we let its callback function do the refreshing
   (unless dir-treeview-file-watch-enabled (treeview-refresh-node node)))
 
@@ -2006,6 +2040,279 @@ point.  If there is no node at point, or the file doesn't exist, does nothing."
   (interactive)
   (dir-treeview-call-for-file-at-point 'dir-treeview-show-file-info))
 
+(defun dir-treeview-exec (cmd dir &rest args)
+  "Execute command CMD in directory DIR with arguments ARGS.
+
+CMD is the command to run (a string).  DIR specifies the directory of the
+process.  It must be a string or nil.  If nil, DIR is set to the value of
+`default-directory'.  ARGS are the arguments passed to the command.  All of
+them must be strings.  The command is run synchroniously, thus, Emacs waits
+until the proecess is finished.  If the exit code of the process is 0, the
+function returns t, otherwise, it signals an error."
+  (unless dir (setq dir default-directory))
+  (with-temp-buffer
+    (setq default-directory dir)
+    (if (equal (apply 'call-process cmd nil t nil args) 0) t (error "Failed to execute %s: %s" cmd (buffer-string)))))
+
+(defun dir-treeview-sudo-tramp (cmd dir &rest args)
+  "Run an external command as root using Tramp's sudo method.
+
+CMD, DIR, and ARGS have the same meaning as in `dir-treeview-exec'.  The command
+is run synchroniously, thus, Emacs waits until the proecess is finished.
+
+Tramp is actually a package to access remote files by different methods, but it
+also provides the \"sudo\" method which allows us to work as root on the local
+machine. See
+
+  URL `https://www.gnu.org/software/emacs/manual/html_node/tramp/index.html'
+
+for more information about Tramp.  This function uses Tramp with the \"sudo\"
+method to execute the above command as root.  If necessary, the user will be
+asked for a password."
+  (unless dir (setq dir default-directory))
+  (with-temp-buffer
+    (let ( (auth-source-save-behavior nil) )
+      (cd (concat "/sudo:root@localhost:" dir))
+      (shell-command (concat cmd " " (mapconcat 'shell-quote-argument args " "))) )))
+
+(defun dir-treeview-sudo-nopasswd (cmd dir &rest args)
+  "Run an external command with `sudo´, not expecting a password prompt.
+
+CMD, DIR, and ARGS have the same meaning as in `dir-treeview-exec'.
+
+Calls `sudo´ to run CMD as root in directory DIR with arguments ARGS.  Only works
+properly if `sudo´ doesn't ask for a password.  This is the case if the NOPASSWD
+flag is set for the current user in the `sudoers´ configuration (see
+`man sudoers´ for more information).
+
+CMD is executed synchroniously.  If the exit code of the process is 0, returns t,
+otherwise, signals an error."
+  (apply 'dir-treeview-exec "sudo" dir cmd args))
+
+(defun dir-treeview-pkexec (cmd dir &rest args)
+  "Run an external command as root using `pkexec´.
+
+CMD, DIR, and ARGS have the same meaning as in `dir-treeview-exec'.  The command
+is run synchroniously, thus, Emacs waits until the proecess is finished.
+
+`pkexec´ is a program to run a command as another user. It is similar to `sudo´,
+but unlike `sudo´, it uses a graphical dialog to enter the password by default
+(see `man pkexec´ for more information).  Note that the way `pkexec´
+authenticates the user is configurable, the graphical dialog is only the
+default.  If the default is changed, this function might not work properly."
+  (apply 'dir-treeview-exec "pkexec" dir "--keep-cwd" cmd args))
+(defun dir-treeview-sudo (cmd dir &rest args)
+  "Run command CMD as root in directory DIR with arguments ARGS.
+
+Same as `dir-treeview-exec', buts the command is executed as root.
+
+Calls `dir-treeview-sudo-function' if in graphics mode, thus, if
+(`display-graphic-p') return non-nil, and  `dir-treeview-sudo-function-textmode'
+otherwise."
+  (apply
+   (if (display-graphic-p) dir-treeview-sudo-function dir-treeview-sudo-function-textmode)
+   cmd dir args))
+
+(defun dir-treeview-getent (database sep &rest cols)
+  "Get system information by running 'getent DATABASE' and process the output.
+
+Recall that getent is a program to get system information like users, user
+groups, etc. from sources called \"databases\" (see `man getent´ for details).
+The information is written to stdout in tabulated form.  The cells are separated
+by, e.g., whitespaces or colons, depending on the database.
+
+DATABASE is the database to query.  It must be a string.
+
+SEP must be a regular expression describing the cell separatur used in DATABASE.
+Each match of SEP is treated as a separator.
+
+If COLS is not specified or nil, the entire table is returned.  Otherwise, only
+the columns specified by COLS are returned.  The values of COLS are interpreted
+as column numbers in this case. Column numbers start at 0.
+
+The return value is a list of lists of strings, where each of the latter lists
+correponds to one row of output, and each element to one cell."
+  (let ( (result ()) )
+    (with-temp-buffer
+      (when (equal (call-process "getent" nil '(t nil) nil database) 0)
+        (goto-char (point-min))
+        (while (not (eobp))
+          (let* ( (line (buffer-substring-no-properties (point) (progn (end-of-line) (point))))
+                  (record (split-string line sep)) )
+            (when cols (setq record (seq-map #'(lambda (col) (nth col record)) cols)))
+            (push record result))
+          (forward-line 1))))
+    result))
+
+(defun dir-treeview-filter-by-prefix (list-of-strings prefix)
+  "Filter a list of strings by prefix.
+This is an auxiliary function.  LIST-OF-STRINGS must be a list of strings,
+PREFIX a string.  Returns the elements of LIST-OF-STRINGS wich start with
+PREFIX, as a list."
+  (seq-filter #'(lambda (elem) (string-prefix-p prefix elem)) list-of-strings))
+
+(defun dir-treeview-get-chown-arg-completions (value)
+  "Return all possible completions of VALUE as the first argument of `chown´.
+Recall that the first argument of chown (not counting options) specifies the new
+user and, optionally, the new group in the form NEW_USER[:NEW_GROUP]. "
+  (let* ( (tokens (split-string value ":")) (count (length tokens)) )
+    (cond ((= count 1) (dir-treeview-filter-by-prefix
+                        ;; User names and ids (columns 0 and 2 in getent output):
+                        (apply #'nconc (dir-treeview-getent "passwd" ":" 0 2)) value))
+          ((= count 2) (seq-map #'(lambda (elem) (concat (nth 0 tokens) ":" elem))
+                                (dir-treeview-filter-by-prefix
+                                 ;; Group names and ids (columns 0 and 2 in getent output):
+                                 (apply #'nconc (dir-treeview-getent "group" ":" 0 2)) (nth 1 tokens))))
+          (t nil)) ))
+
+
+(defun dir-treeview-chown (owner recursive &rest abs-filenames)
+  "Apply the command `chown´ with argument OWNER to the files ABS-FILENAMES.
+If RECURSIVE is non-nil, the flag \"-R\" is set in addition.  `chown´ is run as
+root.  The user may be prompted for his/her (not root's) password.
+
+This is equivalent to
+
+  sudo chown [-R] OWNER ABS-FILENAMES
+
+on the command line.  [-R] means -R is set if, and only if, RECURSIVE is
+non-nil.
+
+Returns t on success, and signals an error otherwise."
+  (let ( (args abs-filenames) )
+    (when recursive (push "-R" args))
+    (push owner args)
+    (apply 'dir-treeview-sudo "chown" nil args)))
+
+(defun dir-treeview-change-owner (node)
+  "Change the user, and optionally group, of the file corresponding to NODE.
+
+This is carried out as root.  The user might be asked for his/her (not root's)
+password.
+
+The user is asked for the new owner in the minibuffer. The owner must be
+specified in a form understood by `chown´.  Thus, it must be of the form USER or
+USER:GROUP, where USER and GROUP may be names or numerical ids.  If the file is
+a directory, the user is asked if the owner should be changed recursively."
+  (let* ( (abs-filename (treeview-get-node-prop node 'absolute-name))
+          (filename (dir-treeview-local-filename abs-filename))
+          (new-owner (completing-read (format "Change owner of %s (chown syntax): " filename)
+                                      (completion-table-dynamic #'dir-treeview-get-chown-arg-completions)))
+          (recursive (when (file-directory-p abs-filename)
+                       (dir-treeview-user-confirm-y-or-n "Change owner recursively? "))) )
+    (dir-treeview-chown new-owner recursive abs-filename)
+    (treeview-redisplay-node node) ))
+
+(defun dir-treeview-change-owner-at-point ()
+  "Change the user, and optionally group, of the file at point.
+Calls `dir-treeview-change-owner' for the node at point.  If there is no node at
+point, does nothing."
+  (interactive)
+  (treeview-call-for-node-at-point 'dir-treeview-change-owner t t))
+
+(defun dir-treeview-change-owner-of-selected-files ()
+  "Change the user, and optionally group, of the selected files.
+
+The user is asked for the new owner in the minibuffer. The owner must be
+specified in a form understood by `chown´.  Thus, it must be of the form USER or
+USER:GROUP, where USER and GROUP may be names or numerical ids.  If there are
+directories among the selected files, the user is asked if the owner of the
+directories should be changed recursively."
+  (interactive)
+  (let ( (selected-nodes (treeview-get-all-selected-nodes)) (saved-point (point)) )
+    (if selected-nodes
+        (unwind-protect
+            (let ( (new-owner (completing-read "Change owner of selected files (chown syntax): "
+                                               (completion-table-dynamic  #'dir-treeview-get-chown-arg-completions)))
+                   (recursive (when (seq-some 'dir-treeview-directory-p selected-nodes)
+                                (dir-treeview-user-confirm-y-or-n "Change owner of directories recursively? "))) )
+              (apply 'dir-treeview-chown new-owner recursive (seq-map 'dir-treeview-get-node-absolute-name selected-nodes))
+              (dolist (node selected-nodes) (treeview-redisplay-node node)) )
+          (treeview-unselect-all-nodes)
+          (goto-char saved-point) ))))
+
+(defun dir-treeview-chmod (mode recursive &rest abs-filenames)
+  "Apply the command `chmod´ with argument MODE to the files ABS-FILENAMES.
+If RECURSIVE is non-nil, the flag \"-R\" is set in addition.
+
+This is equivalent to
+
+  chmod [-R] MODE ABS-FILENAMES
+
+on the command line.  [-R] means -R is set if, and only if, RECURSIVE is
+non-nil.
+
+Returns t on success, and signals an error otherwise."
+  (let ( (args abs-filenames) )
+    (when recursive (push "-R" args))
+    (push mode args)
+    (apply 'dir-treeview-exec "chmod" nil args)))
+
+(defun dir-treeview-change-mode (node)
+  "Change the file mode of the file corresponding to NODE.
+
+In particular, can be used to change file permissions and file executablility.
+Calls the Unix/Linux command `chmod´.
+
+The user is asked for the new mode in the minibuffer. The mode must be specified
+in a form understood by `chmod´.  If the file is a directory, the user is asked
+if the mode should be changed recursively."
+  (let* ( (abs-filename (treeview-get-node-prop node 'absolute-name))
+          (filename (dir-treeview-local-filename abs-filename))
+          (new-mode (read-from-minibuffer (format "Change mode of %s (chmod syntax): " filename)))
+          (recursive (when (file-directory-p abs-filename)
+                       (dir-treeview-user-confirm-y-or-n "Change mode recursively? "))) )
+    (dir-treeview-chmod new-mode recursive abs-filename)
+    (treeview-redisplay-node node) ))
+
+(defun dir-treeview-change-mode-at-point ()
+  "Change the file mode of the file corresponding to the node at point.
+
+In particular, can be used to change file permissions and file executablility.
+Calls the Unix/Linux command `chmod´.
+
+Calls `dir-treeview-change-mode' for the node at point.  If there is no node at
+point, does nothing."
+  (interactive)
+  (treeview-call-for-node-at-point 'dir-treeview-change-mode t t))
+
+(defun dir-treeview-change-mode-of-selected-files ()
+  "Change the mode (of the selected files.
+
+In particular, can be used to change file permissions and file executablility.
+Calls the Unix/Linux command `chmod´.
+
+The user is asked for the new mode in the minibuffer. The mode must be specified
+in a form understood by `chmod´.  If there are directories among the selected
+files, the user is asked if the mode of the directories should be changed
+recursively."
+  (interactive)
+  (let ( (selected-nodes (treeview-get-all-selected-nodes)) (saved-point (point)) )
+    (if selected-nodes
+        (unwind-protect
+            (let ( (new-mode (read-from-minibuffer "Change mode of selected files (chmod syntax): "))
+                   (recursive (when (seq-some 'dir-treeview-directory-p selected-nodes)
+                                (dir-treeview-user-confirm-y-or-n "Change mode of directories recursively? "))) )
+              (apply 'dir-treeview-chmod new-mode recursive (seq-map 'dir-treeview-get-node-absolute-name selected-nodes))
+              (dolist (node selected-nodes) (treeview-redisplay-node node)) )
+          (treeview-unselect-all-nodes)
+          (goto-char saved-point) ))))
+
+(defun dir-treeview-change-mode-at-point ()
+  "Change the file mode of the file at point or all selected files.
+
+In particular, can be used to change file permissions and file executablility.
+Calls the Unix/Linux command `chmod´.
+
+If the node at point is selected, calls `dir-treeview-change-mode-of-selected-files'.
+Otherwise, calls `dir-treeview-change-mode' for the node at point.
+If there is no node at point, does nothing."
+  (interactive)
+  (let ( (node (treeview-get-node-at-pos (point))) )
+    (when node
+      (if (treeview-node-selected-p node) (dir-treeview-change-mode-of-selected-files)
+        (treeview-call-for-node node 'dir-treeview-change-mode t t) ))))
+
 (defun dir-treeview-get-open-with-menu (node)
   "Create and return the 'Open with ...' submenu of the popup menu of NODE.
 The submenu offers external programs or Lisp functions to open the file
@@ -2013,7 +2320,7 @@ represented by NODE.  The submenu is controlled by the customizable variable
 `dir-treeview-open-commands'.
 
 For the parent menu (the popup menu of NODE), see `dir-treeview-get-node-menu'."
-  (let ( (filename (treeview-get-node-prop node 'absolute-name))
+  (let ( (filename (dir-treeview-get-node-absolute-name node))
          (command-table dir-treeview-open-commands)
          (menu (list "Open with . . ."))
          (menu-names ()) )
@@ -2039,14 +2346,19 @@ For the parent menu (the popup menu of NODE), see `dir-treeview-get-node-menu'."
 This is the default implementation of the customizable variable
 `dir-treeview-get-node-menu-function'."
   (if (treeview-node-selected-p node)
+      ;; Node is selected
       (list "Selection"
             (vector "Delete selected files" (list 'dir-treeview-delete-selected-files))
             (vector "Open selected files" (list 'dir-treeview-open-selected-files))
-            (vector "Open selected files with . . ." (list 'dir-treeview-open-selected-files-with)))
-    (let* ( (absolute-name (treeview-get-node-prop node 'absolute-name))
+            (vector "Open selected files with . . ." (list 'dir-treeview-open-selected-files-with))
+            (vector "Change mode of selected files" (list 'dir-treeview-change-mode-of-selected-files))
+            (vector "Change owner of selected files" (list 'dir-treeview-change-owner-of-selected-files)))
+    ;; Node is not selected
+    (let* ( (absolute-name (dir-treeview-get-node-absolute-name node))
             (local-name (dir-treeview-local-filename absolute-name))
             (selected-nodes-exist (treeview-selected-nodes-exist)) )
       (if (file-directory-p absolute-name)
+          ;; Node is a directory
           (list local-name
                 (vector "Open" (list 'find-file absolute-name))
                 (vector "Open in Other Window" (list 'find-file-other-window absolute-name))
@@ -2064,8 +2376,13 @@ This is the default implementation of the customizable variable
                 "--"
                 (vector "Copy" (list 'dir-treeview-copy-dir (list 'quote node)))
                 (vector "Rename" (list 'dir-treeview-rename-file (list 'quote node)))
-                (vector "Delete" (list 'dir-treeview-delete-dir (list 'quote node))))
+                (vector "Delete" (list 'dir-treeview-delete-dir (list 'quote node)))
+                "--"
+                (vector "Change mode" (list 'dir-treeview-change-mode (list 'quote node)))
+                (vector "Change owner" (list 'dir-treeview-change-owner (list 'quote node))))
+        ;; Node is not a directory
         (if (funcall dir-treeview-is-openable-in-editor-p-function absolute-name)
+            ;; Node is openable in editor
             (list local-name
                   (vector "Open" (list 'find-file absolute-name))
                   (vector "Open in Other Window" (list 'find-file-other-window absolute-name))
@@ -2081,7 +2398,11 @@ This is the default implementation of the customizable variable
                   "--"
                   (vector "Copy" (list 'dir-treeview-copy-file (list 'quote node)))
                   (vector "Rename" (list 'dir-treeview-rename-file (list 'quote node)))
-                  (vector "Delete" (list 'dir-treeview-delete-file (list 'quote node))))
+                  (vector "Delete" (list 'dir-treeview-delete-file (list 'quote node)))
+                  "--"
+                  (vector "Change mode" (list 'dir-treeview-change-mode (list 'quote node)))
+                  (vector "Change owner" (list 'dir-treeview-change-owner (list 'quote node))))
+          ;; Node is not openable in editor
           (list local-name
                 (dir-treeview-get-open-with-menu node)
                 "--"
@@ -2089,7 +2410,10 @@ This is the default implementation of the customizable variable
                 "--"
                 (vector "Copy" (list 'dir-treeview-copy-file absolute-name))
                 (vector "Rename" (list 'dir-treeview-rename-file absolute-name))
-                (vector "Delete" (list 'dir-treeview-delete-file absolute-name))) )))) )
+                (vector "Delete" (list 'dir-treeview-delete-file absolute-name))
+                "--"
+                (vector "Change mode" (list 'dir-treeview-change-mode (list 'quote node)))
+                (vector "Change owner" (list 'dir-treeview-change-owner (list 'quote node)))) )))) )
 
 (defun dir-treeview-get-node-menu (node)
   "Create and return the popup menu for NODE.
@@ -2337,6 +2661,8 @@ When `dir-treeview-theme-file' does not exist, doen't load a theme, but sets
     (define-key map (kbd "a") 'treeview-toggle-select-node-at-point)
     (define-key map (kbd "A") 'treeview-select-gap-above-node-at-point)
     (define-key map (kbd "i") 'dir-treeview-show-info-for-node-at-point)
+    (define-key map (kbd "M-m") 'dir-treeview-change-mode-at-point)
+    (define-key map (kbd "M-o") 'dir-treeview-change-owner-at-point)
     (define-key map [menu-bar treeview]
       (cons "Dir-Treeview" (make-sparse-keymap "Dir-Treeview")))
     (define-key map [menu-bar treeview customize]
