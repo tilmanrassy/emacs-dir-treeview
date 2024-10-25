@@ -3,7 +3,7 @@ emacs-dir-treeview
 
 Emacs file system navigator and simple file manager.
 
-This document describes v1.3.3 of emacs-dir-treeview.
+This document describes v1.4.0 of emacs-dir-treeview.
 
 * [Overview](#overview)
 * [Screenshots](#screenshots)
@@ -148,7 +148,7 @@ It is possible to navigate in the tree completely without the mouse, only with t
 
 This section describes the context menu of unselected nodes. Selection and its effect on the context menu is described in the next section.
 
-A right-click on an node opens the nodes's context menu. Alternativly, the context menu can be opened with the `e` key when the point is on a node. The menu looks different depending on whether the node is a directory or not:
+A right-click on an node opens the nodes's context menu. Alternativly, the context menu can be opened with the `m` key when the point is on a node. The menu looks different depending on whether the node is a directory or not:
 
 #### Non-directory-file:
 ![Context menu for non-directory files](screenshots/050_context_menu_non_directory.png "Context menu for non-directory files")
@@ -183,14 +183,16 @@ The following operations can be done on the selected files:
 * Deleting all selected files
 * Opening all selected files in Emacs
 * Open all selected files with an external program
+* Change mode of all selected files
+* Chnage owner of all selected files
 
-To copy or move the selected files, navigate to the destination (which must be a directory), and open its context menu (right-click or `e`). The context menu offers one item for moving and one for copying the selected files to the destination directory.
+To copy or move the selected files, navigate to the destination (which must be a directory), and open its context menu (right-click or `m`). The context menu offers one item for moving and one for copying the selected files to the destination directory.
 
 For the other three operations (deleting, opening in Emacs, opening with an external program), open the context menu of one of the selected files. The context menu consists of three items, one for each of the three operations.
 
 ### Key bindings
 
-As usual in Emacs, dir-treeview activates a special local keymap in its buffers (cf. [Local Keymaps](https://www.gnu.org/software/emacs/manual/html_node/emacs/Local-Keymaps.html "Local Keymaps - GNU Emacs Manual") in the Emacs Manual). Besides this, dir-treeview defines three additional keymaps which are only active in particular places of the buffer: the *control keymap* inside the `[+]`/`[-]` symbols, the *label keymap* inside the filenames of the nodes, and the *parent dir keymap* inside the  `..` symbol atop the first node. The following tables list the default key bindings of the keymaps:
+As usual in Emacs, dir-treeview activates a special local keymap in its buffers (cf. [Local Keymaps](https://www.gnu.org/software/emacs/manual/html_node/emacs/Local-Keymaps.html "Local Keymaps - GNU Emacs Manual") in the Emacs Manual). Besides this, dir-treeview defines two additional keymaps which are only active in particular places of the buffer: the *control keymap* inside the `[+]`/`[-]` symbols, and the *label keymap* inside the filenames of the nodes. The following tables list the default key bindings of the keymaps:
 
 
 #### Local keymap
