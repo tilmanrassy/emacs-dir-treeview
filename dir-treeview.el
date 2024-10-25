@@ -5,7 +5,7 @@
 ;; Author: Tilman Rassy <tilman.rassy@googlemail.com>
 ;; URL: https://github.com/tilmanrassy/emacs-dir-treeview
 ;; Version: 1.4.0
-;; Package-Requires: ((emacs "24.4") (treeview "1.2.0"))
+;; Package-Requires: ((emacs "25.1") (treeview "1.3.0"))
 ;; Keywords: tools, convenience, files
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -29,6 +29,7 @@
 ;; Can open files by external programs or Lisp functions
 ;; Can open terminal in directory
 ;; Can copy, delete, and move files
+;; Can change file modes (i.e., permissions, executability, etc.) and file ownerships
 ;; Provides selection of multiple files to operate on them
 ;; Works in text mode, too
 ;; Supports file notifications
@@ -41,7 +42,7 @@
 (require 'treeview)
 (require 'filenotify)
 
-(defconst dir-treeview-version "1.3.2"
+(defconst dir-treeview-version "1.4.0"
   "Version of the Dir Treeview' package.
 See URL `https://github.com/tilmanrassy/emacs-dir-treeview' for more information
 on this package.")
@@ -988,7 +989,7 @@ This function is the Dir Treeview implementation of
 (defun dir-treeview-get-label (node)
   "Return the string suitable as the label of NODE.
 This function is the Dir Treeview implementation of
-`treeview-get-label-function'.  It simply retuns the name of NODE."
+`treeview-get-label-function'.  It simply returns the name of NODE."
   (treeview-get-node-name node))
 
 (defun dir-treeview-get-icon-face (node)
@@ -1235,13 +1236,7 @@ If no such node exists, does nothing."
 
 (defun dir-treeview-get-buffers ()
   "Return a list of all Dir Treeview buffers."
-  (let ( (dir-treeview-buffers ()) )
-    (dolist (buffer (buffer-list))
-      (with-current-buffer buffer
-        (if (eq major-mode 'dir-treeview-mode)
-            (setq dir-treeview-buffers (cons buffer dir-treeview-buffers)))))
-    (nreverse dir-treeview-buffers)
-    dir-treeview-buffers))
+  (seq-filter #'(lambda (buffer) (eq (buffer-local-value 'major-mode buffer) 'dir-treeview-mode)) (buffer-list)))
 
 (defun dir-treeview-get-buffer (&optional dir)
   "Find and return the Dir Treeview buffer with DIR as root directory.
@@ -1545,11 +1540,11 @@ at point, does nothing."
 (defun dir-treeview-highlight-file-at-point-and-call (action-function)
   "Highlight node at point and call ACTION-FUNCTION for the corresponding file.
 
-ACTION-FUNCTION must be the symbol of a function.  The function is called with
-one argument, the absolute filename of the node at point.  Before ACTION-FUNCTION
-is invoked, the node is highlighted be means of `treeview-highlight-node'.  After
-ACTION-FUNCTION returns, the node is un-highlighted be means of
-`treeview-unhighlight-node'.
+ACTION-FUNCTION must be the symbol of a function.  The function is called
+with one argument, the absolute filename of the node at point.  Before
+ACTION-FUNCTION is invoked, the node is highlighted be means of
+`treeview-highlight-node'.  After ACTION-FUNCTION returns, the node is
+un-highlighted be means of `treeview-unhighlight-node'.
 
 If there is no node at point, does nothing.
 
@@ -2062,7 +2057,7 @@ is run synchroniously, thus, Emacs waits until the proecess is finished.
 
 Tramp is actually a package to access remote files by different methods, but it
 also provides the \"sudo\" method which allows us to work as root on the local
-machine. See
+machine.  See
 
   URL `https://www.gnu.org/software/emacs/manual/html_node/tramp/index.html'
 
@@ -2080,13 +2075,13 @@ asked for a password."
 
 CMD, DIR, and ARGS have the same meaning as in `dir-treeview-exec'.
 
-Calls `sudo´ to run CMD as root in directory DIR with arguments ARGS.  Only works
-properly if `sudo´ doesn't ask for a password.  This is the case if the NOPASSWD
-flag is set for the current user in the `sudoers´ configuration (see
-`man sudoers´ for more information).
+Calls `sudo´ to run CMD as root in directory DIR with arguments ARGS.  Only
+works properly if `sudo´ doesn't ask for a password.  This is the case if
+the NOPASSWD flag is set for the current user in the `sudoers´ configuration
+\(see `man sudoers´ for more information).
 
-CMD is executed synchroniously.  If the exit code of the process is 0, returns t,
-otherwise, signals an error."
+CMD is executed synchroniously.  If the exit code of the process is 0, returns
+t, otherwise, signals an error."
   (apply 'dir-treeview-exec "sudo" dir cmd args))
 
 (defun dir-treeview-pkexec (cmd dir &rest args)
@@ -2095,9 +2090,9 @@ otherwise, signals an error."
 CMD, DIR, and ARGS have the same meaning as in `dir-treeview-exec'.  The command
 is run synchroniously, thus, Emacs waits until the proecess is finished.
 
-`pkexec´ is a program to run a command as another user. It is similar to `sudo´,
+`pkexec´ is a program to run a command as another user.  It is similar to `sudo´,
 but unlike `sudo´, it uses a graphical dialog to enter the password by default
-(see `man pkexec´ for more information).  Note that the way `pkexec´
+\(see `man pkexec´ for more information).  Note that the way `pkexec´
 authenticates the user is configurable, the graphical dialog is only the
 default.  If the default is changed, this function might not work properly."
   (apply 'dir-treeview-exec "pkexec" dir "--keep-cwd" cmd args))
@@ -2107,8 +2102,8 @@ default.  If the default is changed, this function might not work properly."
 Same as `dir-treeview-exec', buts the command is executed as root.
 
 Calls `dir-treeview-sudo-function' if in graphics mode, thus, if
-(`display-graphic-p') return non-nil, and  `dir-treeview-sudo-function-textmode'
-otherwise."
+\(`display-graphic-p') returns non-nil.  Otherwise, calls
+`dir-treeview-sudo-function-textmode'."
   (apply
    (if (display-graphic-p) dir-treeview-sudo-function dir-treeview-sudo-function-textmode)
    cmd dir args))
@@ -2154,7 +2149,7 @@ PREFIX, as a list."
 (defun dir-treeview-get-chown-arg-completions (value)
   "Return all possible completions of VALUE as the first argument of `chown´.
 Recall that the first argument of chown (not counting options) specifies the new
-user and, optionally, the new group in the form NEW_USER[:NEW_GROUP]. "
+user and, optionally, the new group in the form NEW_USER[:NEW_GROUP]."
   (let* ( (tokens (split-string value ":")) (count (length tokens)) )
     (cond ((= count 1) (dir-treeview-filter-by-prefix
                         ;; User names and ids (columns 0 and 2 in getent output):
@@ -2190,7 +2185,7 @@ Returns t on success, and signals an error otherwise."
 This is carried out as root.  The user might be asked for his/her (not root's)
 password.
 
-The user is asked for the new owner in the minibuffer. The owner must be
+The user is asked for the new owner in the minibuffer.  The owner must be
 specified in a form understood by `chown´.  Thus, it must be of the form USER or
 USER:GROUP, where USER and GROUP may be names or numerical ids.  If the file is
 a directory, the user is asked if the owner should be changed recursively."
@@ -2213,7 +2208,7 @@ point, does nothing."
 (defun dir-treeview-change-owner-of-selected-files ()
   "Change the user, and optionally group, of the selected files.
 
-The user is asked for the new owner in the minibuffer. The owner must be
+The user is asked for the new owner in the minibuffer.  The owner must be
 specified in a form understood by `chown´.  Thus, it must be of the form USER or
 USER:GROUP, where USER and GROUP may be names or numerical ids.  If there are
 directories among the selected files, the user is asked if the owner of the
@@ -2254,9 +2249,9 @@ Returns t on success, and signals an error otherwise."
 In particular, can be used to change file permissions and file executablility.
 Calls the Unix/Linux command `chmod´.
 
-The user is asked for the new mode in the minibuffer. The mode must be specified
-in a form understood by `chmod´.  If the file is a directory, the user is asked
-if the mode should be changed recursively."
+The user is asked for the new mode in the minibuffer.  The mode must be
+specified in a form understood by `chmod´.  If the file is a directory,
+the user is asked if the mode should be changed recursively."
   (let* ( (abs-filename (treeview-get-node-prop node 'absolute-name))
           (filename (dir-treeview-local-filename abs-filename))
           (new-mode (read-from-minibuffer (format "Change mode of %s (chmod syntax): " filename)))
@@ -2282,10 +2277,10 @@ point, does nothing."
 In particular, can be used to change file permissions and file executablility.
 Calls the Unix/Linux command `chmod´.
 
-The user is asked for the new mode in the minibuffer. The mode must be specified
-in a form understood by `chmod´.  If there are directories among the selected
-files, the user is asked if the mode of the directories should be changed
-recursively."
+The user is asked for the new mode in the minibuffer.  The mode must be
+specified in a form understood by `chmod´.  If there are directories among the
+selected files, the user is asked if the mode of the directories should be
+changed recursively."
   (interactive)
   (let ( (selected-nodes (treeview-get-all-selected-nodes)) (saved-point (point)) )
     (if selected-nodes
@@ -2304,7 +2299,8 @@ recursively."
 In particular, can be used to change file permissions and file executablility.
 Calls the Unix/Linux command `chmod´.
 
-If the node at point is selected, calls `dir-treeview-change-mode-of-selected-files'.
+If the node at point is selected, calls
+`dir-treeview-change-mode-of-selected-files'.
 Otherwise, calls `dir-treeview-change-mode' for the node at point.
 If there is no node at point, does nothing."
   (interactive)
@@ -2648,8 +2644,7 @@ When `dir-treeview-theme-file' does not exist, doen't load a theme, but sets
     (define-key map (kbd "C-<down>") 'treeview-goto-last-sibling)
     (define-key map (kbd ".") 'treeview-refresh-subtree-at-point)
     (define-key map (kbd "=") 'treeview-refresh-tree)
-    (define-key map (kbd "m") 'dir-treeview-popup-node-menu-at-point)
-    (define-key map (kbd "e") 'dir-treeview-popup-node-menu-at-point) ;; Legacy support
+    (define-key map (kbd "e") 'dir-treeview-popup-node-menu-at-point)
     (define-key map (kbd "d") 'dir-treeview-delete-at-point)
     (define-key map (kbd "<delete>") 'dir-treeview-delete-at-point)
     (define-key map (kbd "c") 'dir-treeview-copy-file-or-dir-at-point)
