@@ -116,7 +116,7 @@ save the theme, use the menu bar or \[treeview-load-theme] and
   :type 'string)
 
 (defcustom dir-treeview-control-margin-right " "
-  "Left margin of a control symbol."
+  "Right margin of a control symbol."
   :group 'dir-treeview
   :type 'string)
 
