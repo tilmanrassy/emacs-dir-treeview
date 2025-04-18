@@ -1499,14 +1499,18 @@ Returns \"*dir-treeview DIR *\" (where DIR is substituted by the value of DIR)."
 (defun dir-treeview-open (&optional dir)
   "Display the directory tree for DIR.
 If omitted or nil, read DIR in the minibuffer, with `dir-treeview-default-root'
-as preset value.
+as preset value, or `default-directory' if a prefix argument is given.
 
 If there exists a Dir Treeview buffer for the directory DIR, switch to the first
 such buffer found in the list of dir Dir Treeview buffers.
 
 If there exists no such buffer, create one and switch to it."
   (interactive)
-  (unless dir (setq dir (dir-treeview-read-directory-name "Directory: " dir-treeview-default-root dir-treeview-default-root t)))
+  (unless dir (setq dir (let ((init-dir (if current-prefix-arg
+					    default-directory
+					  dir-treeview-default-root)))
+			  (dir-treeview-read-directory-name "Directory: "
+							    init-dir init-dir t))))
   (let ( (buffer (or (dir-treeview-get-buffer dir) (dir-treeview-create-buffer dir))) )
     (if dir-treeview-show-in-side-window
         (display-buffer-in-side-window buffer
