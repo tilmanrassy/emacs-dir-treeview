@@ -1,11 +1,11 @@
 ;;; dir-treeview.el --- A directory tree browser and simple file manager -*- lexical-binding: t -*-
 
-;; Copyright (C) 2018-2024 Tilman Rassy
+;; Copyright (C) 2018-2026 Tilman Rassy
 
 ;; Author: Tilman Rassy <tilman.rassy@googlemail.com>
 ;; URL: https://github.com/tilmanrassy/emacs-dir-treeview
-;; Version: 1.4.0
-;; Package-Requires: ((emacs "25.1") (treeview "1.3.0"))
+;; Version: 1.5.0
+;; Package-Requires: ((emacs "29.1") (treeview "1.4.0"))
 ;; Keywords: tools, convenience, files
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -639,6 +639,17 @@ except that only functions suitable for text mode should be set als value."
 (defface dir-treeview-highlight-face
   '((t (:background "GreenYellow")))
   "Face to highlicht a node.")
+
+(defface dir-treeview-search-match-face
+  '((t (:background "#FFFF33")))
+  "Face to highlight search results."
+  :group 'dir-treeview)
+
+(defface dir-treeview-search-selected-face
+  '((t (:background "#12E193")))
+  "Face to highlight the selected search result."
+  :group 'dir-treeview)
+
 (defface dir-treeview-link-target-face
   ()
   "Face to highlight link targets."
@@ -1465,27 +1476,29 @@ Returns \"*dir-treeview DIR *\" (where DIR is substituted by the value of DIR)."
     (setq treeview-update-node-children-function 'dir-treeview-update-node-children
           treeview-node-leaf-p-function 'dir-treeview-node-leaf-p
           treeview-get-indent-function 'dir-treeview-get-indent
-          treeview-get-indent-face-function (lambda (_node) 'dir-treeview-indent-face)
+          treeview-get-indent-face-function #'(lambda (_node) 'dir-treeview-indent-face)
           treeview-get-icon-function (if (display-graphic-p) 'dir-treeview-get-icon 'treeview-return-nil)
           treeview-get-icon-face-function 'dir-treeview-get-icon-face
-          treeview-get-icon-margin-left-function (lambda (_node) dir-treeview-icon-margin-left)
-          treeview-get-icon-margin-right-function (lambda (_node) dir-treeview-icon-margin-right)
+          treeview-get-icon-margin-left-function #'(lambda (_node) dir-treeview-icon-margin-left)
+          treeview-get-icon-margin-right-function #'(lambda (_node) dir-treeview-icon-margin-right)
           treeview-get-control-function 'dir-treeview-get-control
-          treeview-get-control-margin-left-function (lambda (_node) dir-treeview-control-margin-left)
-          treeview-get-control-margin-right-function (lambda (_node) dir-treeview-control-margin-right)
+          treeview-get-control-margin-left-function #'(lambda (_node) dir-treeview-control-margin-left)
+          treeview-get-control-margin-right-function #'(lambda (_node) dir-treeview-control-margin-right)
           treeview-get-control-keymap-function 'dir-treeview-get-control-keymap
-          treeview-get-control-face-function (lambda (_node) 'dir-treeview-control-face)
-          treeview-get-control-mouse-face-function (lambda (_node) 'dir-treeview-control-mouse-face)
+          treeview-get-control-face-function #'(lambda (_node) 'dir-treeview-control-face)
+          treeview-get-control-mouse-face-function #'(lambda (_node) 'dir-treeview-control-mouse-face)
           treeview-get-label-function 'dir-treeview-get-label
           treeview-get-label-margin-left-function 'dir-treeview-get-label-margin-left
           treeview-get-label-keymap-function 'dir-treeview-get-label-keymap
           treeview-get-label-face-function 'dir-treeview-get-label-face
-          treeview-get-label-mouse-face-function (lambda (_node) 'dir-treeview-label-mouse-face)
-          treeview-get-selected-node-face-function (lambda (_node) 'dir-treeview-select-face)
-          treeview-get-highlighted-node-face-function (lambda (_node) 'dir-treeview-highlight-face)
+          treeview-get-label-mouse-face-function #'(lambda (_node) 'dir-treeview-label-mouse-face)
+          treeview-get-selected-node-face-function #'(lambda (_node) 'dir-treeview-select-face)
+          treeview-get-highlighted-node-face-function #'(lambda (_node) 'dir-treeview-highlight-face)
+          treeview-get-search-match-face-function #'(lambda (_node) 'dir-treeview-search-match-face)
+          treeview-get-search-selected-face-function #'(lambda (_node) 'dir-treeview-search-selected-face)
           treeview-after-node-expanded-function 'dir-treeview-after-node-expanded
           dir-treeview-start-node (dir-treeview-new-node dir nil)
-          treeview-get-root-node-function (lambda () dir-treeview-start-node))
+          treeview-get-root-node-function #'(lambda () dir-treeview-start-node))
     (treeview-expand-node dir-treeview-start-node)
     (unless dir-treeview-saved-theme-loaded (dir-treeview-load-saved-theme))
     (dir-treeview-redisplay)
@@ -1530,8 +1543,9 @@ If there exists no such buffer, create one and switch to it."
 (defun dir-treeview-call-for-file-at-point (action-function)
   "Apply ACTION-FUNCTION to the filename of the node at point.
 ACTION-FUNCTION must be the symbol of a function.  The function is called with
-one argument, the absolute filename of the node at point.  If there is no node
-at point, does nothing."
+one argument, the absolute filename of the node at point.  Return whatever
+ACTION-FUNCTION returns.  If there is no node at point, does nothing and
+returns nul."
   (let* ( (node (treeview-get-node-at-pos (point)))
           (filename (when node (dir-treeview-get-node-absolute-name node))) )
     (when filename
@@ -2658,6 +2672,7 @@ When `dir-treeview-theme-file' does not exist, doen't load a theme, but sets
     (define-key map (kbd "i") 'dir-treeview-show-info-for-node-at-point)
     (define-key map (kbd "M-m") 'dir-treeview-change-mode-at-point)
     (define-key map (kbd "M-o") 'dir-treeview-change-owner-at-point)
+    (define-key map (kbd "S") 'treeview-search)
     (define-key map [menu-bar treeview]
       (cons "Dir-Treeview" (make-sparse-keymap "Dir-Treeview")))
     (define-key map [menu-bar treeview customize]
