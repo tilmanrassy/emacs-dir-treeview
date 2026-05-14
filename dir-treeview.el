@@ -1865,6 +1865,56 @@ The meaning is the following:
   "Display MESSAGE in the echo area and wait until the user presses RET."
   (while (not (eq (read-event (concat message " (press RET key to continue)")) 'return))))
 
+
+(defun dir-treeview-target-exists-ask-user (target)
+  "Ask the user how to deal with an existing copy or move target.
+Assumes TARGET is the destination of a copy or move operation of a file.
+Displayes a prompt saying that the target already exists and asks what to do.
+The user can answer with \"o\", \"s\", \"O\", \"S\" or \"r\". The meaning is
+the following:
+  o - overwrite target
+  s - skip target
+  O - overwrite this target and do so for the rest of the files
+  S - skip this target and do so for the rest of the files
+  r - (rename) choose a new name for the target
+The options \"O\" and \"S\" are only meaningful in situations where several
+files are copied or moved, respecively.  This is assumed by the function.
+Returns the user answer as a character."
+  (interactive)
+  (let* ( (prompt (format "Target %s already exists - [o]verwrite  [s]kip  [O]verwrite all  [S]kip all  [r]ename ?" target))
+          (input (read-event prompt)) )
+    (while (not (member input '(?o ?s ?O ?S ?r)))
+      (setq input (read-event (concat "Wrong input - please answer o, s, O, S, or r\n" prompt))))
+    input))
+
+(defun dir-treeview-target-is-directory-ask-user (target)
+  "Ask the user what to do when the target to overwrite is a directory.
+Assumes that: (1) TARGET is the destination of a copy or move operation of a
+file, (2) TARGET exists already, (3) the user has decided to overwrite it, and
+(4) TARGET is a directory.  Displayes a prompt saying that TARGET cannot be
+overwritten because it is a directory, and asks what to do.  The user can answer
+with \"s\" or \"r\". The meaning is the following:
+  s - skip target
+  r - (rename) choose a new name for the target
+Returns the user answer as a character."
+  (interactive)
+  (let* ( (prompt (format "Cannot overwrite %s (is a director) - [s]kip  [r]ename ?" target))
+          (input (read-event prompt)) )
+    (while (not (member input '(?s ?r)))
+      (setq input (read-event (concat "Wrong input - please answer s or r\n" prompt))))
+    input))
+
+(defun dir-treeview-read-new-target (target)
+  "Read a new name for an already existing target.
+Assumes that: (1) TARGET is the destination of a copy or move operation of a
+file, (2) TARGET exists already, (3) the user has decided to overwrite it.
+Prompts for the new filename in the minibuffer.  The old filename, TARGET, is
+included in the prompt.  Lets the user type the new filename.  Returns the new
+filename."
+  (let ( (dirname (file-name-directory target))
+         (filename (file-name-nondirectory target)) )
+    (read-file-name (format "New name for target %s: " target) dirname nil nil filename) ) )
+
 (defun dir-treeview-copy-or-move-files-to-dir (source-files target-dir copy-or-move-function)
   "Copy or move SOURCE-FILES to TARGET-DIR by means of COPY-OR-MOVE-FUNCTION.
 This is an auxliary function to implement the copying or moving of several files
@@ -1874,22 +1924,26 @@ function expecting two filenames as arguments.  It is called for each filename
 in SOURCE-FILES, with that filename as first and TARGET-DIR as second argument.
 COPY-OR-MOVE-FUNCTION should copy or move the respective source file to
 TARGET-DIR."
-  (let ( (overwrite 'ask) )
+  (let ( (state 'ask) )
     (unless (file-directory-p target-dir) (error "Not a directory: %s" target-dir))
-    (dolist (source-file source-files)
-      (let* ( (filename (file-name-nondirectory source-file))
-              (target-file (concat (file-name-as-directory target-dir) filename)) )
-        (when (or (not (file-exists-p target-file))
-                  (if (not (file-regular-p target-file))
-                      (progn (dir-treeview-user-inform (format "%s exists as a non-regular file - skipping" filename)) nil)
-                    (eq overwrite 'all)
-                    (and (eq overwrite 'ask)
-                         (let ( (user-answer (dir-treeview-user-confirm-overwrite filename)) )
-                           (cond ((equal user-answer ?a) (setq overwrite 'all))
-                                 ((equal user-answer ?o) (setq overwrite 'none)))
-                           (member user-answer '(?y ?a))))))
-          (funcall copy-or-move-function source-file target-file) )))
-    ;; If file watch is enabled, we let its callback function do the refreshing
+    (dolist (source source-files)
+      (let* ( (filename (file-name-nondirectory source))
+              (target (concat (file-name-as-directory target-dir) filename)) )
+        (while
+            (let ( (retry nil) )
+              (if (file-exists-p target)
+                  (when (or (eq state 'overwrite-all)
+                            (and (eq state 'ask)
+                                 (let ( (answer (dir-treeview-target-exists-ask-user target)) )
+                                   (cond ( (equal answer ?O) (setq state 'overwrite-all) )
+                                         ( (equal answer ?S) (setq state 'skip-all) )
+                                         ( (equal answer ?r) (setq target (dir-treeview-read-new-target target) retry t) ) )
+                                   (member answer '(?o ?O) )) ))
+                    (if (and (file-directory-p target) (equal (dir-treeview-target-is-directory-ask-user target) ?r))
+                        (setq target (dir-treeview-read-new-target target) retry t)
+                      (funcall copy-or-move-function source target)))
+                (funcall copy-or-move-function source target))
+              retry) )) )
     (unless dir-treeview-file-watch-enabled (treeview-refresh-tree)) ))
 
 (defun dir-treeview-delete-files (files)
@@ -2672,7 +2726,7 @@ When `dir-treeview-theme-file' does not exist, doen't load a theme, but sets
     (define-key map (kbd "i") 'dir-treeview-show-info-for-node-at-point)
     (define-key map (kbd "M-m") 'dir-treeview-change-mode-at-point)
     (define-key map (kbd "M-o") 'dir-treeview-change-owner-at-point)
-    (define-key map (kbd "S") 'treeview-search)
+    (define-key map (kbd ":") 'treeview-search)
     (define-key map [menu-bar treeview]
       (cons "Dir-Treeview" (make-sparse-keymap "Dir-Treeview")))
     (define-key map [menu-bar treeview customize]
