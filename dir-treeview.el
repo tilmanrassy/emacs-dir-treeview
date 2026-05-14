@@ -1767,14 +1767,14 @@ deny for all remaining files in each question (see
           (when (dir-treeview-user-confirm-y-or-n (format "Kill buffer visiting %s? " (buffer-file-name buffer)))
             (dir-treeview-kill-buffer buffer)) )) )) )
 
-(defun dir-treeview-rename-file (node)
-  "Rename the file or directory corresponding to NODE.
+(defun dir-treeview-move-file (node)
+  "Move file or directory corresponding to NODE.
 Reads the target in the minibuffer.  If the target is a directory, the file
-is renamed to a like-named file in that directory.  If the destination file
+is moved to a like-named file in that directory.  If the destination file
 exists already, the function asks for confirmation in the minibuffer before
 overwriting it."
   (let* ( (filename (dir-treeview-get-node-absolute-name node))
-          (prompt (concat "Rename " (dir-treeview-local-filename filename) " to: "))
+          (prompt (concat "Move " (dir-treeview-local-filename filename) " to: "))
           (new-filename (expand-file-name (dir-treeview-read-file-name prompt filename))) )
     (if (file-directory-p new-filename)
         (setq new-filename (concat (file-name-as-directory new-filename) (dir-treeview-local-filename filename))))
@@ -1790,12 +1790,12 @@ overwriting it."
                 (treeview-refresh-node parent-of-new)))
           (dir-treeview-update-buffer-file-name filename new-filename) ))))
 
-(defun dir-treeview-rename-file-at-point ()
-  "Rename the file or directory corresponding to the node at point.
-Calls `dir-treeview-rename-file' with the node at point.  If there is no node at
+(defun dir-treeview-move-file-at-point ()
+  "Move the file or directory corresponding to the node at point.
+Calls `dir-treeview-move-file' with the node at point.  If there is no node at
 point, does nothing."
   (interactive)
-  (treeview-call-for-node-at-point 'dir-treeview-rename-file t))
+  (treeview-call-for-node-at-point 'dir-treeview-move-file t))
  
 (defun dir-treeview-delete-file (node)
   "Delete the file corresponding to NODE.
@@ -2439,7 +2439,7 @@ This is the default implementation of the customizable variable
                 (vector "Create Subdir" (list 'dir-treeview-create-subdir (list 'quote node)))
                 "--"
                 (vector "Copy" (list 'dir-treeview-copy-dir (list 'quote node)))
-                (vector "Rename" (list 'dir-treeview-rename-file (list 'quote node)))
+                (vector "Move" (list 'dir-treeview-move-file (list 'quote node)))
                 (vector "Delete" (list 'dir-treeview-delete-dir (list 'quote node)))
                 "--"
                 (vector "Change mode" (list 'dir-treeview-change-mode (list 'quote node)))
@@ -2461,7 +2461,7 @@ This is the default implementation of the customizable variable
                   (vector "Open Terminal" (list 'dir-treeview-open-terminal absolute-name))
                   "--"
                   (vector "Copy" (list 'dir-treeview-copy-file (list 'quote node)))
-                  (vector "Rename" (list 'dir-treeview-rename-file (list 'quote node)))
+                  (vector "Move" (list 'dir-treeview-move-file (list 'quote node)))
                   (vector "Delete" (list 'dir-treeview-delete-file (list 'quote node)))
                   "--"
                   (vector "Change mode" (list 'dir-treeview-change-mode (list 'quote node)))
@@ -2473,7 +2473,7 @@ This is the default implementation of the customizable variable
                 (vector "Open Terminal" (list 'dir-treeview-open-terminal absolute-name))
                 "--"
                 (vector "Copy" (list 'dir-treeview-copy-file absolute-name))
-                (vector "Rename" (list 'dir-treeview-rename-file absolute-name))
+                (vector "Move" (list 'dir-treeview-move-file absolute-name))
                 (vector "Delete" (list 'dir-treeview-delete-file absolute-name))
                 "--"
                 (vector "Change mode" (list 'dir-treeview-change-mode (list 'quote node)))
@@ -2717,7 +2717,7 @@ When `dir-treeview-theme-file' does not exist, doen't load a theme, but sets
     (define-key map (kbd "<delete>") 'dir-treeview-delete-at-point)
     (define-key map (kbd "c") 'dir-treeview-copy-file-or-dir-at-point)
     (define-key map (kbd "C") 'dir-treeview-copy-selected-files-to-dir-at-point)
-    (define-key map (kbd "r") 'dir-treeview-rename-file-at-point)
+    (define-key map (kbd "m") 'dir-treeview-move-file-at-point)
     (define-key map (kbd "t") 'dir-treeview-open-terminal-at-point)
     (define-key map (kbd "f") 'dir-treeview-open-new-file-at-point)
     (define-key map (kbd "s") 'dir-treeview-create-subdir-at-point)
