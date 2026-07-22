@@ -736,7 +736,7 @@ function was invoked by a mouse command, a graphical file dialog is used.
 Otherwise, the filename is read in the minibuffer."
   (interactive)
   (let ( (use-file-dialog dir-treeview-use-file-dialog) )
-    (read-file-name prompt dir default-filename mustmatch initial predicate)))
+    (read-file-name prompt (file-name-as-directory dir) default-filename mustmatch initial predicate)))
 
 (defun dir-treeview-read-directory-name (prompt &optional dir default-dirname mustmatch initial)
   "Read a directory, either in the minibuffer or a graphical dialog.
@@ -750,13 +750,12 @@ Otherwise, the directory is read in the minibuffer."
   (interactive)
   (let ( (use-file-dialog dir-treeview-use-file-dialog) )
     (file-name-as-directory
-     (read-directory-name prompt dir default-dirname mustmatch initial))))
+     (read-directory-name prompt (file-name-as-directory dir) default-dirname mustmatch initial))))
 
 (defun dir-treeview-read-new-file-name (prompt dir)
   "Read a name that is not an existing filename in the directory DIR.
 Prompts with PROMPT.  Intended for reading the name of a new file to be created.
 Uses `dir-treeview-read-file-name' internally."
-  (setq dir (file-name-as-directory dir))
   (let( (filename (dir-treeview-read-file-name prompt dir "" nil "")) )
     (setq filename (expand-file-name filename dir))
     (when (file-exists-p filename)
@@ -1610,6 +1609,16 @@ The conversion to the absolute and canonicalized version is done by
   (setq location (expand-file-name location))
   (if (file-directory-p location) location (dir-treeview-parent-filename location)))
 
+(defun dir-treeview-get-directory-at-point ()
+  "Return the directory at point.
+If there is a node at point, and the file corresponding to it is a directory,
+returns the absolute and canonicalized name of the directory.  If the file
+corresponding to the node is not a directory, returns the absolute and
+canonicalized version of the directory containing the file.  If the is no node
+at point, returns nil."
+  (let ( (node (treeview-get-node-at-pos (point))) )
+    (when node (dir-treeview-get-directory (dir-treeview-get-node-absolute-name node)))))
+
 (defun dir-treeview-open-terminal (location)
   "Open a terminal at LOCATION.
 LOCATION must be the name of a file or directory.  In case of a directory, the
@@ -1633,6 +1642,19 @@ Calls `dir-treeview-open-terminal' with the absolute filename of the node at
 point.  If there is no node at point, does nothing."
   (interactive)
   (dir-treeview-call-for-file-at-point 'dir-treeview-open-terminal))
+
+(defun dir-treeview-find-file-at-point ()
+  "Open a file in Emacs.
+The path to the file is read in the minibuffer.  If there is already a buffer
+visiting the file, simply switches to that buffer.  This is virtually the same
+as the ordinary `find-file' command, but with one difference: When you type the
+file in the minibuffer, you start with the directory at point, not with
+`default-directory' (provided there is a directory at point; otherwise, you
+start with `default-directory' again).  This is useful if you're navigating the
+tree with the keyboard and want to open a file in the directory where you are
+(thus, the directory whre the poimt is)."
+  (interactive)
+  (find-file (dir-treeview-read-file-name "Find file: " (or (dir-treeview-get-directory-at-point) default-directory))) )
 
 (defun dir-treeview-open-new-file (location)
   "Open a buffer with a new file at LOCATION.
@@ -2719,7 +2741,7 @@ When `dir-treeview-theme-file' does not exist, doen't load a theme, but sets
     (define-key map (kbd "C") 'dir-treeview-copy-selected-files-to-dir-at-point)
     (define-key map (kbd "m") 'dir-treeview-move-file-at-point)
     (define-key map (kbd "t") 'dir-treeview-open-terminal-at-point)
-    (define-key map (kbd "f") 'dir-treeview-open-new-file-at-point)
+    (define-key map (kbd "f") 'dir-treeview-find-file-at-point)
     (define-key map (kbd "s") 'dir-treeview-create-subdir-at-point)
     (define-key map (kbd "a") 'treeview-toggle-select-node-at-point)
     (define-key map (kbd "A") 'treeview-select-gap-above-node-at-point)
