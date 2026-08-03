@@ -1795,22 +1795,24 @@ Reads the target in the minibuffer.  If the target is a directory, the file
 is moved to a like-named file in that directory.  If the destination file
 exists already, the function asks for confirmation in the minibuffer before
 overwriting it."
-  (let* ( (filename (dir-treeview-get-node-absolute-name node))
-          (prompt (concat "Move " (dir-treeview-local-filename filename) " to: "))
-          (new-filename (expand-file-name (dir-treeview-read-file-name prompt filename))) )
+  (let* ( (abs-filename (dir-treeview-get-node-absolute-name node))
+          (filename (dir-treeview-local-filename abs-filename))
+          (dir (dir-treeview-parent-filename abs-filename))
+          (prompt (concat "Move " filename " to: "))
+          (new-filename (expand-file-name (dir-treeview-read-file-name prompt dir nil nil filename))) )
     (if (file-directory-p new-filename)
-        (setq new-filename (concat (file-name-as-directory new-filename) (dir-treeview-local-filename filename))))
+        (setq new-filename (concat (file-name-as-directory new-filename) filename)))
     (if (or (not (file-exists-p new-filename))
             (dir-treeview-user-confirm-y-or-n (concat new-filename " exists. Overwrite? ")))
         (let ( (parent (treeview-get-node-parent node))
                (parent-of-new (dir-treeview-find-node-with-absolute-name (dir-treeview-parent-filename new-filename))) )
-          (rename-file filename new-filename t)
+          (rename-file abs-filename new-filename t)
           ;; If file watch is enabled, we let its callback function do the refreshing
           (unless dir-treeview-file-watch-enabled
             (treeview-refresh-node parent)
             (if (and parent-of-new (not (eq parent parent-of-new)))
                 (treeview-refresh-node parent-of-new)))
-          (dir-treeview-update-buffer-file-name filename new-filename) ))))
+          (dir-treeview-update-buffer-file-name abs-filename new-filename) ))))
 
 (defun dir-treeview-move-file-at-point ()
   "Move the file or directory corresponding to the node at point.
