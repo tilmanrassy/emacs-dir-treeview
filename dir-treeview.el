@@ -1652,7 +1652,7 @@ file in the minibuffer, you start with the directory at point, not with
 `default-directory' (provided there is a directory at point; otherwise, you
 start with `default-directory' again).  This is useful if you're navigating the
 tree with the keyboard and want to open a file in the directory where you are
-(thus, the directory whre the poimt is)."
+\(thus, the directory whre the poimt is)."
   (interactive)
   (find-file (dir-treeview-read-file-name "Find file: " (or (dir-treeview-get-directory-at-point) default-directory))) )
 
@@ -1894,7 +1894,7 @@ The meaning is the following:
   "Ask the user how to deal with an existing copy or move target.
 Assumes TARGET is the destination of a copy or move operation of a file.
 Displayes a prompt saying that the target already exists and asks what to do.
-The user can answer with \"o\", \"s\", \"O\", \"S\" or \"r\". The meaning is
+The user can answer with \"o\", \"s\", \"O\", \"S\" or \"r\".  The meaning is
 the following:
   o - overwrite target
   s - skip target
@@ -1913,11 +1913,14 @@ Returns the user answer as a character."
 
 (defun dir-treeview-target-is-directory-ask-user (target)
   "Ask the user what to do when the target to overwrite is a directory.
-Assumes that: (1) TARGET is the destination of a copy or move operation of a
-file, (2) TARGET exists already, (3) the user has decided to overwrite it, and
-(4) TARGET is a directory.  Displayes a prompt saying that TARGET cannot be
-overwritten because it is a directory, and asks what to do.  The user can answer
-with \"s\" or \"r\". The meaning is the following:
+Assumes that:
+  (1) TARGET is the destination of a copy or move operation of a file,
+  (2) TARGET exists already,
+  (3) the user has decided to overwrite it, and
+  (4) TARGET is a directory.
+Displayes a prompt saying that TARGET cannot be overwritten because it is a
+directory, and asks what to do.  The user can answer with \"s\" or \"r\".
+The meaning is the following:
   s - skip target
   r - (rename) choose a new name for the target
 Returns the user answer as a character."
@@ -2188,6 +2191,7 @@ but unlike `sudo´, it uses a graphical dialog to enter the password by default
 authenticates the user is configurable, the graphical dialog is only the
 default.  If the default is changed, this function might not work properly."
   (apply 'dir-treeview-exec "pkexec" dir "--keep-cwd" cmd args))
+
 (defun dir-treeview-sudo (cmd dir &rest args)
   "Run command CMD as root in directory DIR with arguments ARGS.
 

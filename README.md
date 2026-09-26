@@ -134,7 +134,7 @@ tree in a side window (cf. [Side Windows](https://www.gnu.org/software/emacs/man
 
 ### Navigating in the tree, with and without mouse
 
-Navigating in the tree with the mouse is straight forward. A left click on the `[+]` or `[-]` symbols expand or collapse the respective directory. A left click on a filename opens the respective file in Emacs. A left click on the  `..` symbol atop the first node switches to the tree originating at the parent directory.
+Navigating in the tree with the mouse is straight forward. A left click on the `[+]` or `[-]` symbols expand or collapse the respective directory. A left click on a filename opens the respective file in Emacs.
 
 It is possible to navigate in the tree completely without the mouse, only with the keyboard:
 
@@ -142,7 +142,7 @@ It is possible to navigate in the tree completely without the mouse, only with t
 * The `SPACE` key expands/collapses the respective directory if the point is on a `[+]`/`[-]` symbol.
 * The `RETURN` key expands/collapses the respective directory if the point is on a `[+]`/`[-]` symbol.
 * The `RETURN` key opens the respective file in Emacs if the point is on a filename.
-* The `RETURN` key switches to the tree of the parent node if the point is on the  `..` symbol atop the first node.
+* The `:` key starts an incremtal search for a node name.
 
 ### The context menu
 
@@ -203,17 +203,18 @@ Key         | Action
 `<up>`      | Move to previuos node
 `C-<down>`  | Move to last sibling
 `C-<up>`    | Move to first sibling
+`:`         | Start incremental search for node
 `.`         | Reload node
 `=`         | Reload entire tree
 `d`         | Delete file or directory
 `DEL`       | Delete file or directory
 `c`         | Copy file or directory
 `C`         | Copy selected files to directory at point
-`r`         | Rename file or directory
+`m`         | Move file or directory
 `M-m`       | Change file mode (permissions, executability, etc.)
 `M-o`       | Change file owner (requires root privileges)
 `t`         | Open terminal
-`f`         | New file
+`f`         | Open file at point (create if necessary)
 `s`         | New directory
 `i`         | Show file info in echo area
 `a`         | Toggle selection
